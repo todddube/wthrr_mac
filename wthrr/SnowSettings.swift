@@ -64,6 +64,21 @@ class SnowSettings {
         didSet { UserDefaults.standard.set(accumulationEnabled, forKey: "accumulationEnabled") }
     }
 
+    /// Maximum height the snow drift can reach before melt kicks in, in points.
+    /// Range: 20 (light dusting) – 300 (deep snow). Default 120.
+    /// Once the drift reaches this cap, landed flakes gradually melt the surface
+    /// so the drift breathes at a steady-state depth rather than freezing solid.
+    var maxAccumulationHeight: Int {
+        didSet { UserDefaults.standard.set(maxAccumulationHeight, forKey: "maxAccumulationHeight") }
+    }
+
+    /// When true the overlay windows are raised above the Dock so weather effects
+    /// appear on top of it. When false (default) the overlay sits below the Dock,
+    /// which naturally occludes it and keeps the drift hidden behind the Dock bar.
+    var showOverDock: Bool {
+        didSet { UserDefaults.standard.set(showOverDock, forKey: "showOverDock") }
+    }
+
     // MARK: - Display selection
 
     /// Whether to show snow on all displays or only the manually selected ones.
@@ -103,6 +118,13 @@ class SnowSettings {
 
         accumulationEnabled = UserDefaults.standard.object(forKey: "accumulationEnabled") != nil
             ? UserDefaults.standard.bool(forKey: "accumulationEnabled")
+            : false
+
+        let savedMaxH = UserDefaults.standard.integer(forKey: "maxAccumulationHeight")
+        maxAccumulationHeight = savedMaxH > 0 ? savedMaxH : 120
+
+        showOverDock = UserDefaults.standard.object(forKey: "showOverDock") != nil
+            ? UserDefaults.standard.bool(forKey: "showOverDock")
             : false
 
         let savedMode = UserDefaults.standard.string(forKey: "displayMode") ?? ""
@@ -152,6 +174,17 @@ class SnowSettings {
         weatherType == .rain
             ? "Puddles form and grow at the bottom of the screen"
             : "Flakes pile up and go around the Dock"
+    }
+
+    /// Human-readable label for the current accumulation depth setting.
+    var driftDepthLabel: String {
+        switch maxAccumulationHeight {
+        case ..<50:   return "Dusting"
+        case ..<100:  return "Light"
+        case ..<160:  return "Normal"
+        case ..<230:  return "Deep"
+        default:      return "Blizzard"
+        }
     }
 
     /// Label for the re-randomise button (context-aware per weather type).

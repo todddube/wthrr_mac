@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background gradient - deep night sky -->
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1a3e"/>
+      <stop offset="50%" stop-color="#2d2b6b"/>
+      <stop offset="100%" stop-color="#0f0f2a"/>
+    </linearGradient>
+    <!-- Cloud gradient -->
+    <linearGradient id="cloud" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8eaf6"/>
+      <stop offset="100%" stop-color="#9fa8da"/>
+    </linearGradient>
+    <!-- Snowflake glow -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Subtle cloud shadow -->
+    <filter id="cloudshadow">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- macOS rounded rect background -->
+  <rect x="0" y="0" width="1024" height="1024" rx="228" ry="228" fill="url(#bg)"/>
+
+  <!-- Subtle stars in background -->
+  <circle cx="180" cy="180" r="3" fill="#fff" opacity="0.6"/>
+  <circle cx="850" cy="140" r="2.5" fill="#fff" opacity="0.5"/>
+  <circle cx="750" cy="220" r="2" fill="#fff" opacity="0.4"/>
+  <circle cx="280" cy="260" r="2" fill="#fff" opacity="0.3"/>
+  <circle cx="140" cy="350" r="2.5" fill="#fff" opacity="0.4"/>
+  <circle cx="900" cy="300" r="3" fill="#fff" opacity="0.5"/>
+  <circle cx="600" cy="150" r="2" fill="#fff" opacity="0.35"/>
+  <circle cx="420" cy="200" r="2.5" fill="#fff" opacity="0.45"/>
+
+  <!-- Main cloud shape -->
+  <g filter="url(#cloudshadow)">
+    <ellipse cx="512" cy="380" rx="260" ry="120" fill="url(#cloud)"/>
+    <ellipse cx="360" cy="380" rx="160" ry="100" fill="url(#cloud)"/>
+    <ellipse cx="660" cy="380" rx="150" ry="95" fill="url(#cloud)"/>
+    <ellipse cx="440" cy="320" rx="130" ry="95" fill="url(#cloud)"/>
+    <ellipse cx="580" cy="310" rx="140" ry="100" fill="url(#cloud)"/>
+    <ellipse cx="510" cy="290" rx="100" ry="80" fill="#e8eaf6"/>
+  </g>
+
+  <!-- Snowflakes - large -->
+  <g fill="#fff" filter="url(#glow)">
+    <!-- Snowflake 1 - six-pointed star -->
+    <g transform="translate(300, 560)" opacity="0.95">
+      <line x1="0" y1="-28" x2="0" y2="28" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+      <line x1="-24" y1="-14" x2="24" y2="14" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+      <line x1="-24" y1="14" x2="24" y2="-14" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+      <line x1="0" y1="-28" x2="-8" y2="-20" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="-28" x2="8" y2="-20" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="28" x2="-8" y2="20" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="28" x2="8" y2="20" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="4" fill="#fff"/>
+    </g>
+
+    <!-- Snowflake 2 -->
+    <g transform="translate(520, 530)" opacity="0.9">
+      <line x1="0" y1="-35" x2="0" y2="35" stroke="#fff" stroke-width="5.5" stroke-linecap="round"/>
+      <line x1="-30" y1="-17.5" x2="30" y2="17.5" stroke="#fff" stroke-width="5.5" stroke-linecap="round"/>
+      <line x1="-30" y1="17.5" x2="30" y2="-17.5" stroke="#fff" stroke-width="5.5" stroke-linecap="round"/>
+      <line x1="-30" y1="-17.5" x2="-22" y2="-24" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      <line x1="30" y1="17.5" x2="22" y2="24" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      <line x1="-30" y1="17.5" x2="-22" y2="24" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      <line x1="30" y1="-17.5" x2="22" y2="-24" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="5" fill="#fff"/>
+    </g>
+
+    <!-- Snowflake 3 -->
+    <g transform="translate(720, 580)" opacity="0.85">
+      <line x1="0" y1="-25" x2="0" y2="25" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/>
+      <line x1="-22" y1="-12.5" x2="22" y2="12.5" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/>
+      <line x1="-22" y1="12.5" x2="22" y2="-12.5" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="3.5" fill="#fff"/>
+    </g>
+  </g>
+
+  <!-- Snowflakes - medium -->
+  <g fill="#fff" opacity="0.8">
+    <g transform="translate(400, 650)">
+      <line x1="0" y1="-18" x2="0" y2="18" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="-16" y1="-9" x2="16" y2="9" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="-16" y1="9" x2="16" y2="-9" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="3" fill="#fff"/>
+    </g>
+    <g transform="translate(620, 670)">
+      <line x1="0" y1="-20" x2="0" y2="20" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="-17" y1="-10" x2="17" y2="10" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="-17" y1="10" x2="17" y2="-10" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="3" fill="#fff"/>
+    </g>
+    <g transform="translate(250, 700)">
+      <line x1="0" y1="-15" x2="0" y2="15" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-13" y1="-7.5" x2="13" y2="7.5" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-13" y1="7.5" x2="13" y2="-7.5" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="2.5" fill="#fff"/>
+    </g>
+    <g transform="translate(780, 700)">
+      <line x1="0" y1="-16" x2="0" y2="16" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-14" y1="-8" x2="14" y2="8" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <line x1="-14" y1="8" x2="14" y2="-8" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="2.5" fill="#fff"/>
+    </g>
+  </g>
+
+  <!-- Small snowflakes / dots falling -->
+  <g fill="#fff">
+    <circle cx="340" cy="770" r="6" opacity="0.6"/>
+    <circle cx="480" cy="750" r="5" opacity="0.5"/>
+    <circle cx="560" cy="790" r="7" opacity="0.55"/>
+    <circle cx="680" cy="760" r="5.5" opacity="0.5"/>
+    <circle cx="440" cy="830" r="4" opacity="0.4"/>
+    <circle cx="590" cy="850" r="4.5" opacity="0.35"/>
+    <circle cx="730" cy="840" r="3.5" opacity="0.3"/>
+    <circle cx="310" cy="860" r="3.5" opacity="0.3"/>
+    <circle cx="510" cy="890" r="3" opacity="0.25"/>
+    <circle cx="650" cy="900" r="3" opacity="0.2"/>
+  </g>
+
+  <!-- Ground snow accumulation -->
+  <path d="M 70 920 Q 200 870 350 890 Q 450 900 512 880 Q 600 865 700 885 Q 800 900 954 870 L 954 954 Q 954 1024 884 1024 L 140 1024 Q 70 1024 70 954 Z" fill="#e8eaf6" opacity="0.25"/>
+  <path d="M 70 940 Q 250 900 400 915 Q 500 925 600 910 Q 750 895 954 910 L 954 954 Q 954 1024 884 1024 L 140 1024 Q 70 1024 70 954 Z" fill="#fff" opacity="0.15"/>
+</svg>

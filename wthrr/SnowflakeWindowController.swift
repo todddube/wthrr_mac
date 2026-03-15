@@ -96,6 +96,24 @@ class SnowflakeWindowController {
         }
     }
 
+    /// Returns the appropriate window level based on the current `showOverDock` setting.
+    /// Below normal (default): overlay sits under all app windows and the Dock.
+    /// Status bar level: overlay floats above the Dock but still below system UI panels.
+    private var overlayWindowLevel: NSWindow.Level {
+        SnowSettings.shared.showOverDock
+            ? .statusBar
+            : NSWindow.Level(rawValue: NSWindow.Level.normal.rawValue - 1)
+    }
+
+    /// Re-applies the current window level to all live overlay windows without
+    /// tearing them down. Called when the user toggles the "Over Dock" setting.
+    func updateWindowLevels() {
+        let level = overlayWindowLevel
+        for window in windowsByDisplay.values {
+            window.level = level
+        }
+    }
+
     /// Constructs a single borderless, transparent, non-interactive overlay window
     /// sized to exactly cover the given screen. Injects a `ScreenGeometry` instance
     /// so the hosted view can respond to dock/screen changes reactively.
@@ -112,7 +130,7 @@ class SnowflakeWindowController {
         window.backgroundColor = .clear
         window.isOpaque = false
         window.hasShadow = false
-        window.level = NSWindow.Level(rawValue: NSWindow.Level.normal.rawValue - 1)
+        window.level = overlayWindowLevel
         window.ignoresMouseEvents = true
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         window.hidesOnDeactivate = false

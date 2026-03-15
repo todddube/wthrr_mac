@@ -128,6 +128,51 @@ struct ContentView: View {
                         }
                     }
 
+                    // ── Drift depth (snow-only, visible when accumulation is on) ─
+                    if settings.weatherType == .snow && settings.accumulationEnabled {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Drift Depth")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(settings.driftDepthLabel)
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                            Slider(value: Binding(
+                                get: { Double(settings.maxAccumulationHeight) },
+                                set: { settings.maxAccumulationHeight = Int($0) }
+                            ), in: 20...300, step: 10)
+                        }
+                    }
+
+                    // ── Display layer ────────────────────────────────────────────
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle(isOn: $settings.showOverDock) {
+                            HStack {
+                                Text("Over Dock")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(settings.showOverDock ? "On" : "Off")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .onChange(of: settings.showOverDock) { _, _ in
+                            AppDelegate.shared?.snowflakeWindowController?.updateWindowLevels()
+                        }
+
+                        if settings.showOverDock {
+                            Text("Weather overlay appears on top of the Dock")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+
                     // ── Display selection ────────────────────────────────────────
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Displays")
