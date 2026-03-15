@@ -1,10 +1,12 @@
-// SnowSettings.swift
-// wthrr — macOS decorative snowfall overlay
+// WeatherSettings.swift
+// wthrr — macOS decorative weather overlay
 //
 // Author: Todd Dube
 // GitHub: https://github.com/todddube/wthrr_mac
 
 import SwiftUI
+
+// MARK: - Weather type
 
 /// Selects the active weather effect shown on overlay windows.
 enum WeatherType: String, CaseIterable {
@@ -12,81 +14,85 @@ enum WeatherType: String, CaseIterable {
     case rain = "rain"   // Raindrops with splashes and optional puddles
 }
 
-/// Determines which physical displays the snow overlay appears on.
+// MARK: - Display mode
+
+/// Determines which physical displays the weather overlay appears on.
 enum DisplayMode: String, CaseIterable {
-    case all      = "all"       // Show snow on every connected display
-    case selected = "selected"  // Show snow only on user-chosen displays
+    case all      = "all"       // Show weather on every connected display
+    case selected = "selected"  // Show weather only on user-chosen displays
 }
 
-/// Observable singleton that holds all snow simulation settings.
-/// Every property persists its value to UserDefaults via `didSet` so settings
-/// survive app restarts. Shared via `.environment(SnowSettings.shared)`.
-@Observable
-class SnowSettings {
-    /// Shared instance used by both the menu bar popover and the overlay windows.
-    static let shared = SnowSettings()
+// MARK: - Weather settings
 
-    // MARK: - Weather type
+/// Observable singleton that holds all weather simulation settings.
+/// Every property persists its value to UserDefaults via `didSet` so settings
+/// survive app restarts. Shared via `.environment(WeatherSettings.shared)`.
+@Observable
+class WeatherSettings {
+    /// Shared instance used by both the menu bar popover and the overlay windows.
+    static let shared = WeatherSettings()
+
+    // MARK: Weather type
 
     /// The currently active weather effect. Switching rebuilds the particle system.
+    /// Posts `.weatherTypeChanged` so AppDelegate can sync the status item icon.
     var weatherType: WeatherType {
-        didSet { UserDefaults.standard.set(weatherType.rawValue, forKey: "weatherType") }
+        didSet {
+            UserDefaults.standard.set(weatherType.rawValue, forKey: "weatherType")
+            NotificationCenter.default.post(name: .weatherTypeChanged, object: nil)
+        }
     }
 
-    // MARK: - Snow physics
+    // MARK: Particle physics
 
-    /// Number of snowflakes rendered per screen. Range: 20–400.
+    /// Number of particles rendered per screen. Range: 20-400.
     var flakeCount: Int {
         didSet { UserDefaults.standard.set(flakeCount, forKey: "flakeCount") }
     }
 
-    /// Multiplier applied to all flake fall speeds. Range: 0.25 (very slow) – 3.0 (blizzard).
+    /// Multiplier applied to all particle fall speeds. Range: 0.25 (very slow) - 3.0 (blizzard).
     var speedMultiplier: Double {
         didSet { UserDefaults.standard.set(speedMultiplier, forKey: "speedMultiplier") }
     }
 
-    /// Seed that drives per-flake randomness via SeededRNG. Changing this value
-    /// causes the entire snowflake population to be re-generated with new positions,
+    /// Seed that drives per-particle randomness via SeededRNG. Changing this value
+    /// causes the entire particle population to be re-generated with new positions,
     /// sizes, speeds, and wobble characteristics.
     var randomSeed: Int {
         didSet { UserDefaults.standard.set(randomSeed, forKey: "randomSeed") }
     }
 
     /// Maximum wind strength. 0 = dead calm, 1 = full gale.
-    /// Controls both peak gust speed (15–140 pts/s) and gust interval frequency.
+    /// Controls both peak gust speed (15-140 pts/s) and gust interval frequency.
     var windStrength: Double {
         didSet { UserDefaults.standard.set(windStrength, forKey: "windStrength") }
     }
 
-    /// When true, snowflakes pile up at the bottom of the screen instead of recycling.
-    /// The drift respects the Dock position and redraws when the Dock is resized or moved.
+    /// When true, snow accumulates at the screen bottom or rain forms puddles.
     var accumulationEnabled: Bool {
         didSet { UserDefaults.standard.set(accumulationEnabled, forKey: "accumulationEnabled") }
     }
 
     /// Maximum height the snow drift can reach before melt kicks in, in points.
-    /// Range: 20 (light dusting) – 300 (deep snow). Default 120.
-    /// Once the drift reaches this cap, landed flakes gradually melt the surface
-    /// so the drift breathes at a steady-state depth rather than freezing solid.
+    /// Range: 20 (light dusting) - 300 (deep snow). Default 120.
     var maxAccumulationHeight: Int {
         didSet { UserDefaults.standard.set(maxAccumulationHeight, forKey: "maxAccumulationHeight") }
     }
 
     /// When true the overlay windows are raised above the Dock so weather effects
-    /// appear on top of it. When false (default) the overlay sits below the Dock,
-    /// which naturally occludes it and keeps the drift hidden behind the Dock bar.
+    /// appear on top of it. When false (default) the overlay sits below the Dock.
     var showOverDock: Bool {
         didSet { UserDefaults.standard.set(showOverDock, forKey: "showOverDock") }
     }
 
-    // MARK: - Display selection
+    // MARK: Display selection
 
-    /// Whether to show snow on all displays or only the manually selected ones.
+    /// Whether to show weather on all displays or only the manually selected ones.
     var displayMode: DisplayMode {
         didSet { UserDefaults.standard.set(displayMode.rawValue, forKey: "displayMode") }
     }
 
-    /// CGDirectDisplayIDs (stored as strings) of screens that should show snow
+    /// CGDirectDisplayIDs (stored as strings) of screens that should show weather
     /// when `displayMode == .selected`.
     var selectedDisplayIDs: Set<String> {
         didSet {
@@ -95,7 +101,7 @@ class SnowSettings {
         }
     }
 
-    // MARK: - Init
+    // MARK: Init
 
     /// Loads all settings from UserDefaults, falling back to sensible defaults
     /// if a key has never been written (first launch).
@@ -113,7 +119,7 @@ class SnowSettings {
         randomSeed = savedSeed > 0 ? savedSeed : 42
 
         let savedWind = UserDefaults.standard.double(forKey: "windStrength")
-        // UserDefaults returns 0.0 for a missing key, so treat 0 as "not set" → default 0.5
+        // UserDefaults returns 0.0 for a missing key, so treat 0 as "not set" -> default 0.5
         windStrength = UserDefaults.standard.object(forKey: "windStrength") != nil ? savedWind : 0.5
 
         accumulationEnabled = UserDefaults.standard.object(forKey: "accumulationEnabled") != nil
@@ -134,15 +140,15 @@ class SnowSettings {
         selectedDisplayIDs = Set(savedIDs)
     }
 
-    // MARK: - Helpers
+    // MARK: Helpers
 
-    /// Assigns a new random seed, causing the snowflake population to be fully
+    /// Assigns a new random seed, causing the particle population to be fully
     /// regenerated with different sizes, positions, and motion characteristics.
     func reroll() {
         randomSeed = Int.random(in: 1...999_999)
     }
 
-    // MARK: - Weather-type display helpers
+    // MARK: Weather-type display helpers
 
     /// SF Symbol name for the current weather type, used in the header and menu bar.
     var weatherIcon: String {
@@ -192,7 +198,7 @@ class SnowSettings {
         weatherType == .rain ? "Re-randomise Drops" : "Re-randomise Flakes"
     }
 
-    /// Returns `true` if snow should be rendered on the given screen based on
+    /// Returns `true` if weather should be rendered on the given screen based on
     /// the current `displayMode` and `selectedDisplayIDs`.
     func isEnabled(for screen: NSScreen) -> Bool {
         switch displayMode {
@@ -204,7 +210,6 @@ class SnowSettings {
     }
 
     /// Toggles the given screen in or out of `selectedDisplayIDs`.
-    /// Has no effect unless `displayMode == .selected`.
     func toggleDisplay(_ screen: NSScreen) {
         let id = screen.displayID
         if selectedDisplayIDs.contains(id) {
@@ -223,7 +228,7 @@ extension NSScreen {
     /// if the display ID cannot be read from the device description dictionary.
     var displayID: String {
         guard let id = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID else {
-            return localizedName   // fallback
+            return localizedName
         }
         return String(id)
     }

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**wthrr** is a macOS menu bar app that renders an animated snowfall overlay across all connected displays. It has no live weather data — the snow effect is purely decorative and user-configurable.
+**wthrr** is a macOS menu bar app that renders animated weather overlays (snow and rain) across all connected displays. It has no live weather data — the effects are purely decorative and user-configurable.
 
 ## Build & Test
 
@@ -19,30 +19,54 @@ There is no command-line build script — all builds go through Xcode.
 
 ## Architecture
 
-The app has two parallel UI surfaces driven by a single shared state object:
+The app uses a modular folder structure with clear separation between snow and rain modules:
 
-### `SnowSettings` (`@Observable` singleton)
-Central source of truth. Persists all settings to `UserDefaults` via `didSet`. Passed into SwiftUI views via `.environment(SnowSettings.shared)`.
+```
+wthrr/
+├── App/            wthrrApp.swift — entry point, AppDelegate, lifecycle
+├── Models/         WeatherSettings, Particle, ScreenGeometry — shared data
+├── Snow/           SnowParticle (shapes + factory), SnowRenderer (drawing)
+├── Rain/           RainParticle (splash/puddle + factory), RainRenderer (drawing)
+├── Animation/      WeatherAnimationModel — 60 fps physics engine
+├── Views/          WeatherView (Canvas), ContentView (menu bar popover)
+├── Windows/        OverlayWindowController — per-display overlay windows
+└── Assets.xcassets
+```
+
+### `WeatherSettings` (`@Observable` singleton)
+Central source of truth for both snow and rain modes. Persists all settings to `UserDefaults` via `didSet`. Passed into SwiftUI views via `.environment(WeatherSettings.shared)`.
 
 ### Menu bar popover — `ContentView`
-Shown inside a `MenuBarExtra`. Lets the user adjust flake count, speed, wind, and which displays are active. Calls `AppDelegate.shared?.snowflakeWindowController?.applySettings()` when display selection changes.
+Shown inside a `MenuBarExtra`. Lets the user adjust particle count, speed, wind, weather type, and which displays are active. Calls `AppDelegate.shared?.overlayWindowController?.applySettings()` when display selection changes.
 
-### Overlay windows — `SnowflakeWindowController`
-Manages one borderless `NSWindow` per active display. Windows sit just below normal window level (`NSWindow.Level.normal - 1`), are fully transparent and ignore mouse events. Rebuilds windows on `NSApplication.didChangeScreenParametersNotification`.
+### Overlay windows — `OverlayWindowController`
+Manages one borderless `NSWindow` per active display. Windows sit just below normal window level, are fully transparent and ignore mouse events. Rebuilds windows on `NSApplication.didChangeScreenParametersNotification`.
 
-### Snow animation — `SnowflakeView` + `SnowflakeAnimationModel`
-- `SnowflakeAnimationModel` (`@MainActor ObservableObject`) drives a ~60 fps `Timer` scheduled on `RunLoop.main`. Each tick calls `advance()` via `MainActor.assumeIsolated { }` (timer already runs on main thread).
+### Weather animation — `WeatherView` + `WeatherAnimationModel`
+- `WeatherAnimationModel` (`@MainActor ObservableObject`) drives a ~60 fps `Timer` scheduled on `RunLoop.main`. Each tick calls `advance()` via `MainActor.assumeIsolated { }`.
 - `WindModel` simulates gusting wind with smoothed velocity transitions.
-- `SeededRNG` (xorshift64) produces deterministic per-flake randomness from `SnowSettings.randomSeed`.
-- `SnowflakeView` renders with SwiftUI `Canvas` — reading `model.tick` each frame ensures the canvas invalidates and redraws.
+- `SeededRNG` (xorshift64) produces deterministic per-particle randomness.
+- `WeatherView` renders with SwiftUI `Canvas`, delegating to `SnowRenderer` or `RainRenderer`.
+
+### Snow module — `Snow/`
+- `SnowShape` enum defines crystal types (dot, star, dendrite).
+- `SnowParticleFactory` creates snowflakes with size-dependent shape distribution.
+- `SnowRenderer` draws crystals with per-flake rotation and accumulated drift.
+
+### Rain module — `Rain/`
+- `Splash` and `Puddle` structs model rain-specific effects.
+- `RainParticleFactory` creates thin, fast-falling rain streaks.
+- `RainRenderer` draws wind-tilted streaks, expanding splashes, and puddles with shine/ripples.
 
 ### Key data flow
 ```
-SnowSettings.shared
+WeatherSettings.shared
     ├── ContentView (menu bar popover) — reads/writes settings
-    └── SnowflakeWindowController
+    └── OverlayWindowController
             └── per-display NSWindow
-                    └── SnowflakeView (Canvas) + SnowflakeAnimationModel
+                    └── WeatherView (Canvas) + WeatherAnimationModel
+                            ├── SnowRenderer + SnowParticleFactory
+                            └── RainRenderer + RainParticleFactory
 ```
 
 ## Versioning

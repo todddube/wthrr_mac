@@ -1,27 +1,27 @@
 // ContentView.swift
-// wthrr — macOS decorative snowfall overlay
+// wthrr — macOS decorative weather overlay
 //
 // Author: Todd Dube
 // GitHub: https://github.com/todddube/wthrr_mac
 
 import SwiftUI
 
+// MARK: - Content view
+
 /// Root view shown inside the `MenuBarExtra` popover.
-/// Provides the weather summary header, all snow simulation controls (amount, speed,
+/// Provides the weather summary header, all simulation controls (amount, speed,
 /// wind, display selection), a re-randomise button, quit button, and the about footer.
-/// A semi-transparent `SnowflakeView` floats behind all controls as a visual flourish.
+/// A semi-transparent `WeatherView` floats behind all controls as a visual flourish.
 struct ContentView: View {
-    @Environment(SnowSettings.self) private var settings
+    @Environment(WeatherSettings.self) private var settings
     @State private var screens: [NSScreen] = NSScreen.screens
 
     var body: some View {
         @Bindable var settings = settings
 
         ZStack {
-            // Animated snow background — floats behind all controls.
-            // A default ScreenGeometry satisfies the environment requirement;
-            // accumulation is intentionally disabled in the popover preview.
-            SnowflakeView()
+            // Animated weather background — floats behind all controls.
+            WeatherView()
                 .environment(settings)
                 .environment(ScreenGeometry())
                 .opacity(0.35)
@@ -51,14 +51,14 @@ struct ContentView: View {
                 // MARK: Settings
                 VStack(spacing: 16) {
 
-                    // ── Weather type picker ──────────────────────────────────────
+                    // Weather type picker
                     Picker("Weather", selection: $settings.weatherType) {
                         Text("Snow").tag(WeatherType.snow)
                         Text("Rain").tag(WeatherType.rain)
                     }
                     .pickerStyle(.segmented)
 
-                    // ── Particle count ───────────────────────────────────────────
+                    // Particle count
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text("Amount")
@@ -75,7 +75,7 @@ struct ContentView: View {
                         ), in: 20...400, step: 10)
                     }
 
-                    // ── Fall speed ───────────────────────────────────────────────
+                    // Fall speed
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text("Speed")
@@ -91,7 +91,7 @@ struct ContentView: View {
                         Slider(value: $settings.speedMultiplier, in: 0.25...3.0, step: 0.05)
                     }
 
-                    // ── Wind strength ────────────────────────────────────────────
+                    // Wind strength
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text("Wind")
@@ -105,7 +105,7 @@ struct ContentView: View {
                         Slider(value: $settings.windStrength, in: 0.0...1.0, step: 0.05)
                     }
 
-                    // ── Accumulation / Puddles toggle ────────────────────────────
+                    // Accumulation / Puddles toggle
                     VStack(alignment: .leading, spacing: 4) {
                         Toggle(isOn: $settings.accumulationEnabled) {
                             HStack {
@@ -128,7 +128,7 @@ struct ContentView: View {
                         }
                     }
 
-                    // ── Drift depth (snow-only, visible when accumulation is on) ─
+                    // Drift depth (snow-only, visible when accumulation is on)
                     if settings.weatherType == .snow && settings.accumulationEnabled {
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
@@ -147,7 +147,7 @@ struct ContentView: View {
                         }
                     }
 
-                    // ── Display layer ────────────────────────────────────────────
+                    // Display layer
                     VStack(alignment: .leading, spacing: 4) {
                         Toggle(isOn: $settings.showOverDock) {
                             HStack {
@@ -163,7 +163,7 @@ struct ContentView: View {
                         .toggleStyle(.switch)
                         .controlSize(.small)
                         .onChange(of: settings.showOverDock) { _, _ in
-                            AppDelegate.shared?.snowflakeWindowController?.updateWindowLevels()
+                            AppDelegate.shared?.overlayWindowController?.updateWindowLevels()
                         }
 
                         if settings.showOverDock {
@@ -173,7 +173,7 @@ struct ContentView: View {
                         }
                     }
 
-                    // ── Display selection ────────────────────────────────────────
+                    // Display selection
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Displays")
                             .font(.caption)
@@ -181,7 +181,7 @@ struct ContentView: View {
 
                         Picker("", selection: $settings.displayMode) {
                             Text("All Displays").tag(DisplayMode.all)
-                            Text("Choose…").tag(DisplayMode.selected)
+                            Text("Choose...").tag(DisplayMode.selected)
                         }
                         .pickerStyle(.segmented)
                         .onChange(of: settings.displayMode) { _, _ in
@@ -217,7 +217,7 @@ struct ContentView: View {
                         }
                     }
 
-                    // ── Re-randomise ─────────────────────────────────────────────
+                    // Re-randomise
                     Button {
                         settings.reroll()
                     } label: {
@@ -261,15 +261,15 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Helpers
+    // MARK: Helpers
 
-    /// Forwards the current display selection to `SnowflakeWindowController` so
+    /// Forwards the current display selection to `OverlayWindowController` so
     /// overlay windows are added or removed to match the user's choice.
     private func applyDisplaySettings() {
-        AppDelegate.shared?.snowflakeWindowController?.applySettings()
+        AppDelegate.shared?.overlayWindowController?.applySettings()
     }
 
-    /// Maps a speed multiplier value to a human-readable label shown next to the slider.
+    /// Maps a speed multiplier value to a human-readable snow intensity label.
     private func speedLabel(_ v: Double) -> String {
         switch v {
         case ..<0.5:  return "Gentle"
@@ -291,7 +291,7 @@ struct ContentView: View {
         }
     }
 
-    /// Maps a wind strength value to a human-readable label shown next to the slider.
+    /// Maps a wind strength value to a human-readable label.
     private func windLabel(_ v: Double) -> String {
         switch v {
         case ..<0.05: return "Calm"
@@ -304,14 +304,13 @@ struct ContentView: View {
     }
 }
 
-// MARK: - About
+// MARK: - About view
 
 /// Footer view showing the app version string and a tappable GitHub link.
 struct AboutView: View {
     private let repoURL = URL(string: "https://github.com/todddube/wthrr_mac")!
 
-    /// Reads the marketing version and build number from the app bundle at runtime,
-    /// returning a formatted string such as "v1.0.0 (42)".
+    /// Reads the marketing version and build number from the app bundle at runtime.
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         let build   = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
@@ -349,5 +348,5 @@ struct AboutView: View {
 
 #Preview {
     ContentView()
-        .environment(SnowSettings())
+        .environment(WeatherSettings())
 }
