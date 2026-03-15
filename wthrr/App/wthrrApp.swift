@@ -149,7 +149,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func updateStatusItemIcon() {
-        let name = WeatherSettings.shared.weatherType == .rain ? "cloud.rain.fill" : "cloud.snow.fill"
+        let name: String
+        switch WeatherSettings.shared.weatherType {
+        case .rain:    name = "cloud.rain.fill"
+        case .aiStorm: name = "bolt.trianglebadge.exclamationmark.fill"
+        case .snow:    name = "cloud.snow.fill"
+        }
         if let img = NSImage(systemSymbolName: name, accessibilityDescription: "wthrr") {
             statusItem?.button?.image = img
         }

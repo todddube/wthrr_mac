@@ -10,8 +10,9 @@ import SwiftUI
 
 /// Selects the active weather effect shown on overlay windows.
 enum WeatherType: String, CaseIterable {
-    case snow = "snow"   // Snowflakes with optional drift accumulation
-    case rain = "rain"   // Raindrops with splashes and optional puddles
+    case snow    = "snow"      // Snowflakes with optional drift accumulation
+    case rain    = "rain"      // Raindrops with splashes and optional puddles
+    case aiStorm = "aiStorm"   // Digital glitch storm with neon particles and data bolts
 }
 
 // MARK: - Display mode
@@ -162,34 +163,56 @@ class WeatherSettings {
 
     /// SF Symbol name for the current weather type, used in the header and menu bar.
     var weatherIcon: String {
-        weatherType == .rain ? "cloud.rain.fill" : "cloud.snow.fill"
+        switch weatherType {
+        case .rain:    return "cloud.rain.fill"
+        case .aiStorm: return "bolt.trianglebadge.exclamationmark.fill"
+        case .snow:    return "cloud.snow.fill"
+        }
     }
 
     /// Temperature string appropriate for the current weather type.
     var temperatureText: String {
-        weatherType == .rain ? "52\u{00B0}F" : "28\u{00B0}F"
+        switch weatherType {
+        case .rain:    return "52\u{00B0}F"
+        case .aiStorm: return "??\u{00B0}?"
+        case .snow:    return "28\u{00B0}F"
+        }
     }
 
     /// Human-readable name of the current weather type.
     var weatherLabel: String {
-        weatherType == .rain ? "Rain" : "Snow"
+        switch weatherType {
+        case .rain:    return "Rain"
+        case .aiStorm: return "AI Storm"
+        case .snow:    return "Snow"
+        }
     }
 
     /// Unit name for a single particle ("flakes" for snow, "drops" for rain).
     var particleUnit: String {
-        weatherType == .rain ? "drops" : "flakes"
+        switch weatherType {
+        case .rain:    return "drops"
+        case .aiStorm: return "glitches"
+        case .snow:    return "flakes"
+        }
     }
 
     /// Label for the accumulation toggle (context-aware per weather type).
     var accumulationLabel: String {
-        weatherType == .rain ? "Puddles" : "Accumulation"
+        switch weatherType {
+        case .rain:    return "Puddles"
+        case .aiStorm: return "Corruption"
+        case .snow:    return "Accumulation"
+        }
     }
 
     /// Description shown below the accumulation toggle when it is enabled.
     var accumulationDescription: String {
-        weatherType == .rain
-            ? "Puddles form and grow at the bottom of the screen"
-            : "Flakes pile up and go around the Dock"
+        switch weatherType {
+        case .rain:    return "Puddles form and grow at the bottom of the screen"
+        case .aiStorm: return "Static patches corrupt regions of the screen"
+        case .snow:    return "Flakes pile up and go around the Dock"
+        }
     }
 
     /// Human-readable label for the current accumulation depth setting.
@@ -205,7 +228,11 @@ class WeatherSettings {
 
     /// Label for the re-randomise button (context-aware per weather type).
     var rerollLabel: String {
-        weatherType == .rain ? "Re-randomise Drops" : "Re-randomise Flakes"
+        switch weatherType {
+        case .rain:    return "Re-randomise Drops"
+        case .aiStorm: return "Re-randomise Glitches"
+        case .snow:    return "Re-randomise Flakes"
+        }
     }
 
     /// Returns `true` if weather should be rendered on the given screen based on

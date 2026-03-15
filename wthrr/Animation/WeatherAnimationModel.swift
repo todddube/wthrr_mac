@@ -50,6 +50,35 @@ class WeatherAnimationModel: ObservableObject {
     /// Countdown in seconds until the next lightning strike.
     private var timeUntilNextStrike: CGFloat = 0
 
+    // MARK: AI Storm effects
+
+    /// Active horizontal distortion bands sweeping across the screen.
+    private(set) var scanLines: [ScanLine] = []
+
+    /// Active circuit-trace lightning bolts.
+    private(set) var dataBolts: [DataBolt] = []
+
+    /// Active rectangular static patches.
+    private(set) var corruptionPatches: [CorruptionPatch] = []
+
+    /// Alien ships currently flying across the screen.
+    private(set) var alienShips: [AlienShip] = []
+
+    /// Active screen fracture crack patterns.
+    private(set) var screenFractures: [ScreenFracture] = []
+
+    /// Countdown in seconds until the next data bolt strike.
+    private var timeUntilNextDataBolt: CGFloat = 2.0
+
+    /// Countdown in seconds until the next corruption patch spawns.
+    private var timeUntilNextPatch: CGFloat = 1.0
+
+    /// Countdown in seconds until the next screen fracture.
+    private var timeUntilNextFracture: CGFloat = 6.0
+
+    /// Frame counter for glitch teleport checks.
+    private var glitchFrame: Int = 0
+
     // MARK: Accumulation
 
     /// Column width in points for the height-map grid.
@@ -115,10 +144,15 @@ class WeatherAnimationModel: ObservableObject {
         if weatherChanged {
             clearRainEffects()
             clearAccumulation()
+            clearAIStormEffects()
         }
 
         if settings.weatherType == .rain && puddles.isEmpty {
             initializePuddles()
+        }
+
+        if settings.weatherType == .aiStorm && scanLines.isEmpty {
+            initializeScanLines()
         }
 
         rebuildBaseline()
@@ -212,6 +246,8 @@ class WeatherAnimationModel: ObservableObject {
 
             if isRain {
                 advanceRainParticle(at: i, accumulating: accumulating)
+            } else if settings.weatherType == .aiStorm {
+                advanceAIStormParticle(at: i)
             } else {
                 advanceSnowParticle(at: i, accumulating: accumulating, maxAccumH: maxAccumH)
             }
@@ -231,8 +267,12 @@ class WeatherAnimationModel: ObservableObject {
             advanceLightning(dt: dt)
         }
 
-        if !isRain && accumulating && tick % 30 == 0 { smoothAccumulation() }
-        if !isRain && accumulating && tick % 4 == 0 { meltExcessSnow(maxAccumH: maxAccumH) }
+        if settings.weatherType == .aiStorm {
+            advanceAIStormEffects(dt: dt)
+        }
+
+        if !isRain && settings.weatherType != .aiStorm && accumulating && tick % 30 == 0 { smoothAccumulation() }
+        if !isRain && settings.weatherType != .aiStorm && accumulating && tick % 4 == 0 { meltExcessSnow(maxAccumH: maxAccumH) }
 
         tick &+= 1
     }
@@ -343,6 +383,323 @@ class WeatherAnimationModel: ObservableObject {
         }
     }
 
+    // MARK: AI Storm physics
+
+    /// Wraps an AI storm particle that has gone off-screen (including upward-movers).
+    private func advanceAIStormParticle(at i: Int) {
+        // Wrap vertically for both upward and downward movement
+        if particles[i].y > screenSize.height + 20 {
+            particles[i].y = -20
+            particles[i].x = CGFloat.random(in: -20...(screenSize.width + 20))
+        } else if particles[i].y < -30 {
+            particles[i].y = screenSize.height + 10
+            particles[i].x = CGFloat.random(in: -20...(screenSize.width + 20))
+        }
+
+        // Occasional glitch teleport — a sudden jump to a nearby position
+        glitchFrame &+= 1
+        if glitchFrame % 7 == 0 && CGFloat.random(in: 0...1) < 0.02 {
+            particles[i].x += CGFloat.random(in: -60...60)
+            particles[i].y += CGFloat.random(in: -40...40)
+        }
+    }
+
+    /// Advances all AI storm secondary effects: scan lines, data bolts, corruption patches.
+    private func advanceAIStormEffects(dt: CGFloat) {
+        // Advance scan lines
+        for i in scanLines.indices {
+            scanLines[i].y += scanLines[i].speed * dt
+        }
+        // Wrap scan lines that fall off the bottom back to the top
+        for i in scanLines.indices where scanLines[i].y > screenSize.height + 10 {
+            scanLines[i] = ScanLine(
+                y: -CGFloat.random(in: 5...40),
+                speed: CGFloat.random(in: 80...250),
+                width: CGFloat.random(in: 2...6),
+                opacity: Double.random(in: 0.15...0.40),
+                colorIndex: Int.random(in: 0...3)
+            )
+        }
+
+        // Advance data bolts
+        for i in dataBolts.indices.reversed() {
+            dataBolts[i].age += dt
+            // Fade flash
+            let progress = dataBolts[i].age / dataBolts[i].lifetime
+            if progress < 0.1 {
+                dataBolts[i].flashOpacity = Double(1.0 - progress / 0.1) * 0.15
+            } else {
+                dataBolts[i].flashOpacity = 0
+            }
+            if dataBolts[i].age >= dataBolts[i].lifetime {
+                dataBolts.remove(at: i)
+            }
+        }
+        // Spawn new data bolts
+        timeUntilNextDataBolt -= dt
+        if timeUntilNextDataBolt <= 0 && dataBolts.count < 2 {
+            dataBolts.append(spawnDataBolt())
+            timeUntilNextDataBolt = CGFloat.random(in: 3...10)
+        }
+
+        // Advance corruption patches
+        let corruptionEnabled = WeatherSettings.shared.accumulationEnabled
+        for i in corruptionPatches.indices.reversed() {
+            corruptionPatches[i].age += dt
+            if corruptionPatches[i].age >= corruptionPatches[i].lifetime {
+                corruptionPatches.remove(at: i)
+            }
+        }
+        // Spawn new patches if corruption mode is on
+        if corruptionEnabled {
+            timeUntilNextPatch -= dt
+            if timeUntilNextPatch <= 0 && corruptionPatches.count < 5 {
+                corruptionPatches.append(spawnCorruptionPatch())
+                timeUntilNextPatch = CGFloat.random(in: 0.3...1.5)
+            }
+        }
+
+        // Advance alien ships — steer toward target, update trail
+        advanceAlienShips(dt: dt)
+
+        // Advance screen fractures
+        advanceScreenFractures(dt: dt)
+    }
+
+    /// Initializes 2-4 scan lines at random vertical positions.
+    private func initializeScanLines() {
+        guard screenSize != .zero else { return }
+        let count = Int.random(in: 2...4)
+        scanLines = (0..<count).map { _ in
+            ScanLine(
+                y: CGFloat.random(in: 0...screenSize.height),
+                speed: CGFloat.random(in: 80...250),
+                width: CGFloat.random(in: 2...6),
+                opacity: Double.random(in: 0.15...0.40),
+                colorIndex: Int.random(in: 0...3)
+            )
+        }
+    }
+
+    /// Creates a circuit-trace data bolt with right-angle segments.
+    private func spawnDataBolt() -> DataBolt {
+        guard screenSize != .zero else {
+            return DataBolt(segments: [], lifetime: 0.01, flashOpacity: 0, colorIndex: 0)
+        }
+        let segmentCount = Int.random(in: 6...12)
+        let startX = CGFloat.random(in: screenSize.width * 0.1...screenSize.width * 0.9)
+        let startY = CGFloat.random(in: 0...screenSize.height * 0.1)
+        let endY = CGFloat.random(in: screenSize.height * 0.5...screenSize.height * 0.9)
+
+        var points: [CGPoint] = []
+        var x = startX
+        var y = startY
+        points.append(CGPoint(x: x, y: y))
+
+        let totalDropY = endY - startY
+        var isHorizontal = true  // Alternate between horizontal and vertical moves
+
+        for _ in 0..<segmentCount {
+            if isHorizontal {
+                // Horizontal segment
+                x += CGFloat.random(in: -80...80)
+                x = max(10, min(screenSize.width - 10, x))
+            } else {
+                // Vertical segment — always moves downward
+                y += totalDropY / CGFloat(segmentCount / 2 + 1) * CGFloat.random(in: 0.5...1.5)
+                y = min(endY, y)
+            }
+            points.append(CGPoint(x: x, y: y))
+            isHorizontal.toggle()
+        }
+
+        return DataBolt(
+            segments: points,
+            lifetime: CGFloat.random(in: 0.25...0.40),
+            flashOpacity: 0.15,
+            colorIndex: Int.random(in: 0...2)
+        )
+    }
+
+    /// Creates a corruption patch at a random screen position.
+    private func spawnCorruptionPatch() -> CorruptionPatch {
+        CorruptionPatch(
+            x: CGFloat.random(in: 0...max(1, screenSize.width - 80)),
+            y: CGFloat.random(in: 0...max(1, screenSize.height - 16)),
+            width: CGFloat.random(in: 20...80),
+            height: CGFloat.random(in: 4...16),
+            lifetime: CGFloat.random(in: 0.15...0.5),
+            colorIndex: Int.random(in: 0...3)
+        )
+    }
+
+    // MARK: Alien ship physics
+
+    /// Steers alien ships toward their targets, updates trails, and manages the fleet.
+    /// Ships smoothly accelerate toward a wandering target point, creating organic
+    /// curved flight paths. When a ship reaches its target or the timer expires,
+    /// a new target is picked — occasionally off-screen for fly-through behaviour.
+    private func advanceAlienShips(dt: CGFloat) {
+        guard screenSize != .zero else { return }
+
+        // Maintain 2-4 ships
+        while alienShips.count < 2 {
+            alienShips.append(spawnAlienShip())
+        }
+        if alienShips.count < 4 && CGFloat.random(in: 0...1) < 0.001 {
+            alienShips.append(spawnAlienShip())
+        }
+
+        for i in alienShips.indices {
+            // Steer toward target
+            let dx = alienShips[i].targetX - alienShips[i].x
+            let dy = alienShips[i].targetY - alienShips[i].y
+            let dist = sqrt(dx * dx + dy * dy)
+            let steer: CGFloat = 2.5
+            if dist > 5 {
+                alienShips[i].vx += (dx / dist) * steer
+                alienShips[i].vy += (dy / dist) * steer
+            }
+
+            // Clamp to max speed
+            let spd = sqrt(alienShips[i].vx * alienShips[i].vx + alienShips[i].vy * alienShips[i].vy)
+            let maxSpd = alienShips[i].speed
+            if spd > maxSpd {
+                alienShips[i].vx = alienShips[i].vx / spd * maxSpd
+                alienShips[i].vy = alienShips[i].vy / spd * maxSpd
+            }
+
+            // Move
+            alienShips[i].x += alienShips[i].vx * dt
+            alienShips[i].y += alienShips[i].vy * dt
+
+            // Update trail (keep last 12 positions)
+            alienShips[i].trail.insert((alienShips[i].x, alienShips[i].y), at: 0)
+            if alienShips[i].trail.count > 12 {
+                alienShips[i].trail.removeLast()
+            }
+
+            // Pick new target when close or timer expires
+            alienShips[i].timeUntilRetarget -= dt
+            if dist < 30 || alienShips[i].timeUntilRetarget <= 0 {
+                alienShips[i].targetX = CGFloat.random(in: -50...(screenSize.width + 50))
+                alienShips[i].targetY = CGFloat.random(in: -50...(screenSize.height + 50))
+                alienShips[i].timeUntilRetarget = CGFloat.random(in: 2...6)
+            }
+
+            // Wrap ships that drift too far off-screen
+            let margin: CGFloat = 120
+            if alienShips[i].x < -margin || alienShips[i].x > screenSize.width + margin ||
+               alienShips[i].y < -margin || alienShips[i].y > screenSize.height + margin {
+                alienShips[i].x = CGFloat.random(in: 0...screenSize.width)
+                alienShips[i].y = CGFloat.random(in: 0...screenSize.height)
+                alienShips[i].trail.removeAll()
+            }
+        }
+    }
+
+    /// Creates an alien ship at a random edge of the screen flying inward.
+    private func spawnAlienShip() -> AlienShip {
+        let edge = Int.random(in: 0...3) // 0=top, 1=right, 2=bottom, 3=left
+        let x: CGFloat
+        let y: CGFloat
+        switch edge {
+        case 0:  x = CGFloat.random(in: 0...screenSize.width);  y = -20
+        case 1:  x = screenSize.width + 20; y = CGFloat.random(in: 0...screenSize.height)
+        case 2:  x = CGFloat.random(in: 0...screenSize.width);  y = screenSize.height + 20
+        default: x = -20; y = CGFloat.random(in: 0...screenSize.height)
+        }
+        let targetX = CGFloat.random(in: screenSize.width * 0.2...screenSize.width * 0.8)
+        let targetY = CGFloat.random(in: screenSize.height * 0.2...screenSize.height * 0.8)
+        return AlienShip(
+            x: x, y: y,
+            vx: 0, vy: 0,
+            targetX: targetX, targetY: targetY,
+            timeUntilRetarget: CGFloat.random(in: 2...5),
+            size: CGFloat.random(in: 8...16),
+            colorIndex: Int.random(in: 0...3),
+            speed: CGFloat.random(in: 60...180),
+            trail: []
+        )
+    }
+
+    // MARK: Screen fracture physics
+
+    /// Ages active fractures and spawns new ones on a timer.
+    private func advanceScreenFractures(dt: CGFloat) {
+        // Age existing fractures
+        for i in screenFractures.indices.reversed() {
+            screenFractures[i].age += dt
+            let progress = screenFractures[i].age / screenFractures[i].lifetime
+            if progress < 0.08 {
+                screenFractures[i].flashOpacity = Double(1.0 - progress / 0.08) * 0.5
+            } else {
+                screenFractures[i].flashOpacity = 0
+            }
+            if screenFractures[i].age >= screenFractures[i].lifetime {
+                screenFractures.remove(at: i)
+            }
+        }
+
+        // Spawn new fractures
+        timeUntilNextFracture -= dt
+        if timeUntilNextFracture <= 0 && screenFractures.count < 3 {
+            screenFractures.append(spawnScreenFracture())
+            timeUntilNextFracture = CGFloat.random(in: 5...15)
+        }
+    }
+
+    /// Creates a screen fracture with 5-8 jagged arms radiating from a random impact point.
+    /// Each arm has 4-7 segments that zigzag outward with decreasing amplitude.
+    private func spawnScreenFracture() -> ScreenFracture {
+        guard screenSize != .zero else {
+            return ScreenFracture(origin: .zero, arms: [], lifetime: 0.01, colorIndex: 0, flashOpacity: 0)
+        }
+        let origin = CGPoint(
+            x: CGFloat.random(in: screenSize.width * 0.1...screenSize.width * 0.9),
+            y: CGFloat.random(in: screenSize.height * 0.1...screenSize.height * 0.9)
+        )
+        let armCount = Int.random(in: 5...8)
+        var arms: [[CGPoint]] = []
+
+        for i in 0..<armCount {
+            // Base angle evenly spaced with some jitter
+            let baseAngle = (CGFloat(i) / CGFloat(armCount)) * 2 * .pi + CGFloat.random(in: -0.3...0.3)
+            let segCount = Int.random(in: 4...7)
+            var points: [CGPoint] = [origin]
+            var currentAngle = baseAngle
+            var reach: CGFloat = 0
+
+            for seg in 0..<segCount {
+                // Each segment gets longer as it radiates outward
+                let segLen = CGFloat.random(in: 15...45) * (1.0 + CGFloat(seg) * 0.15)
+                reach += segLen
+                currentAngle += CGFloat.random(in: -0.4...0.4)
+                let nx = points.last!.x + cos(currentAngle) * segLen
+                let ny = points.last!.y + sin(currentAngle) * segLen
+                points.append(CGPoint(x: nx, y: ny))
+            }
+            arms.append(points)
+        }
+
+        return ScreenFracture(
+            origin: origin,
+            arms: arms,
+            lifetime: CGFloat.random(in: 2.0...4.0),
+            colorIndex: Int.random(in: 0...3),
+            flashOpacity: 0.5
+        )
+    }
+
+    /// Empties all AI storm effect arrays.
+    func clearAIStormEffects() {
+        scanLines.removeAll()
+        dataBolts.removeAll()
+        corruptionPatches.removeAll()
+        alienShips.removeAll()
+        screenFractures.removeAll()
+    }
+
     // MARK: Lightning
 
     /// Advances the lightning timer, spawns new bolts, and ages the active bolt.
@@ -415,8 +772,13 @@ class WeatherAnimationModel: ObservableObject {
 
     /// Dispatches to the appropriate factory based on the active weather type.
     private func makeParticle(startY: CGFloat, rng: inout SeededRNG, weatherType: WeatherType) -> Particle {
-        weatherType == .rain
-            ? RainParticleFactory.makeRaindrop(startY: startY, screenWidth: screenSize.width, rng: &rng)
-            : SnowParticleFactory.makeFlake(startY: startY, screenWidth: screenSize.width, rng: &rng)
+        switch weatherType {
+        case .rain:
+            return RainParticleFactory.makeRaindrop(startY: startY, screenWidth: screenSize.width, rng: &rng)
+        case .aiStorm:
+            return AIStormParticleFactory.makeGlitch(startY: startY, screenWidth: screenSize.width, rng: &rng)
+        case .snow:
+            return SnowParticleFactory.makeFlake(startY: startY, screenWidth: screenSize.width, rng: &rng)
+        }
     }
 }

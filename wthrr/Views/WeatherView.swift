@@ -25,7 +25,8 @@ struct WeatherView: View {
             let isDark = colorScheme == .dark
             let isRain = settings.weatherType == .rain
 
-            if isRain {
+            switch settings.weatherType {
+            case .rain:
                 RainRenderer.draw(
                     context: context,
                     size: size,
@@ -36,7 +37,19 @@ struct WeatherView: View {
                     windVelocity: model.currentWindVelocity,
                     bolt: model.activeBolt
                 )
-            } else {
+            case .aiStorm:
+                AIStormRenderer.draw(
+                    context: context,
+                    size: size,
+                    isDark: isDark,
+                    particles: model.particles,
+                    scanLines: model.scanLines,
+                    dataBolts: model.dataBolts,
+                    corruptionPatches: model.corruptionPatches,
+                    alienShips: model.alienShips,
+                    screenFractures: model.screenFractures
+                )
+            case .snow:
                 SnowRenderer.draw(
                     context: context,
                     size: size,
@@ -61,6 +74,7 @@ struct WeatherView: View {
         .onChange(of: settings.weatherType) { _, _ in
             model.clearAccumulation()
             model.clearRainEffects()
+            model.clearAIStormEffects()
         }
     }
 }

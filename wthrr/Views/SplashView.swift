@@ -33,7 +33,8 @@ struct SplashView: View {
 
     /// Features shown on the splash, adapted to the current weather type.
     private var features: [(icon: String, text: String)] {
-        if settings.weatherType == .rain {
+        switch settings.weatherType {
+        case .rain:
             return [
                 ("cloud.rain.fill", "Wind-angled rain streaks"),
                 ("drop.fill", "Impact splashes & puddles"),
@@ -41,7 +42,15 @@ struct SplashView: View {
                 ("display.2", "Multi-display support"),
                 ("slider.horizontal.3", "Fully configurable"),
             ]
-        } else {
+        case .aiStorm:
+            return [
+                ("bolt.fill", "Neon glitch particles"),
+                ("cpu", "Circuit-trace data bolts"),
+                ("barcode", "Scan line distortion"),
+                ("display.2", "Multi-display support"),
+                ("slider.horizontal.3", "Fully configurable"),
+            ]
+        case .snow:
             return [
                 ("snowflake", "Three crystal shapes"),
                 ("mountain.2.fill", "Snow drift accumulation"),

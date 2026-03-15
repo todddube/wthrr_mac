@@ -55,6 +55,7 @@ struct ContentView: View {
                     Picker("Weather", selection: $settings.weatherType) {
                         Text("Snow").tag(WeatherType.snow)
                         Text("Rain").tag(WeatherType.rain)
+                        Text("AI Storm").tag(WeatherType.aiStorm)
                     }
                     .pickerStyle(.segmented)
 
@@ -82,9 +83,7 @@ struct ContentView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Spacer()
-                            Text(settings.weatherType == .rain
-                                    ? rainSpeedLabel(settings.speedMultiplier)
-                                    : speedLabel(settings.speedMultiplier))
+                            Text(speedLabelForType(settings.weatherType, settings.speedMultiplier))
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(.secondary)
                         }
@@ -294,6 +293,15 @@ struct ContentView: View {
         AppDelegate.shared?.overlayWindowController?.applySettings()
     }
 
+    /// Returns the appropriate speed label for the given weather type and multiplier.
+    private func speedLabelForType(_ type: WeatherType, _ v: Double) -> String {
+        switch type {
+        case .rain:    return rainSpeedLabel(v)
+        case .aiStorm: return aiStormSpeedLabel(v)
+        case .snow:    return speedLabel(v)
+        }
+    }
+
     /// Maps a speed multiplier value to a human-readable snow intensity label.
     private func speedLabel(_ v: Double) -> String {
         switch v {
@@ -313,6 +321,17 @@ struct ContentView: View {
         case ..<1.5:  return "Shower"
         case ..<2.2:  return "Downpour"
         default:      return "Monsoon"
+        }
+    }
+
+    /// Maps a speed multiplier to an AI storm intensity label.
+    private func aiStormSpeedLabel(_ v: Double) -> String {
+        switch v {
+        case ..<0.5:  return "Flicker"
+        case ..<1.0:  return "Glitch"
+        case ..<1.5:  return "Surge"
+        case ..<2.2:  return "Overload"
+        default:      return "Singularity"
         }
     }
 
