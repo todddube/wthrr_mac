@@ -42,6 +42,14 @@ class WeatherAnimationModel: ObservableObject {
     /// Persistent puddles that grow during rain + puddles mode.
     private(set) var puddles: [Puddle] = []
 
+    // MARK: Lightning
+
+    /// The currently active lightning bolt, if any. Nil when no strike is in progress.
+    private(set) var activeBolt: LightningBolt?
+
+    /// Countdown in seconds until the next lightning strike.
+    private var timeUntilNextStrike: CGFloat = 0
+
     // MARK: Accumulation
 
     /// Column width in points for the height-map grid.
@@ -219,6 +227,10 @@ class WeatherAnimationModel: ObservableObject {
         ageSplashes(dt: dt)
         advancePuddleRipples(dt: dt)
 
+        if isRain && settings.lightningEnabled {
+            advanceLightning(dt: dt)
+        }
+
         if !isRain && accumulating && tick % 30 == 0 { smoothAccumulation() }
         if !isRain && accumulating && tick % 4 == 0 { meltExcessSnow(maxAccumH: maxAccumH) }
 
@@ -329,6 +341,74 @@ class WeatherAnimationModel: ObservableObject {
                 accumulationMap[i] = max(0, accumulationMap[i] - meltRate * 0.3)
             }
         }
+    }
+
+    // MARK: Lightning
+
+    /// Advances the lightning timer, spawns new bolts, and ages the active bolt.
+    /// Produces a brief screen flash followed by a jagged bolt that fades out.
+    private func advanceLightning(dt: CGFloat) {
+        // Age the active bolt
+        if var bolt = activeBolt {
+            bolt.age += dt
+            // Double-flash effect: a quick re-flash at 40% of lifetime
+            let progress = bolt.age / bolt.lifetime
+            if progress < 0.12 {
+                bolt.flashOpacity = Double(1.0 - progress / 0.12) * 0.3
+            } else if progress > 0.35 && progress < 0.45 {
+                bolt.flashOpacity = Double(1.0 - (progress - 0.35) / 0.10) * 0.12
+            } else {
+                bolt.flashOpacity = 0
+            }
+            if bolt.age >= bolt.lifetime {
+                activeBolt = nil
+            } else {
+                activeBolt = bolt
+            }
+        }
+
+        // Count down to the next strike
+        timeUntilNextStrike -= dt
+        if timeUntilNextStrike <= 0 && activeBolt == nil {
+            activeBolt = spawnBolt()
+            timeUntilNextStrike = CGFloat.random(in: 8...25)
+        }
+    }
+
+    /// Creates a new lightning bolt with a jagged path from near the top to the
+    /// lower portion of the screen. The bolt has 10-16 segments with random
+    /// lateral offsets for a natural zigzag appearance.
+    private func spawnBolt() -> LightningBolt {
+        guard screenSize != .zero else {
+            return LightningBolt(segments: [], lifetime: 0.01, flashOpacity: 0)
+        }
+        let segmentCount = Int.random(in: 10...16)
+        let startX = CGFloat.random(in: screenSize.width * 0.15...screenSize.width * 0.85)
+        let startY: CGFloat = CGFloat.random(in: 0...screenSize.height * 0.05)
+        let endY = CGFloat.random(in: screenSize.height * 0.55...screenSize.height * 0.85)
+        let stepY = (endY - startY) / CGFloat(segmentCount)
+
+        var points: [CGPoint] = []
+        var x = startX
+        var y = startY
+        points.append(CGPoint(x: x, y: y))
+
+        for i in 1...segmentCount {
+            y += stepY
+            // Wider zigzags in the middle, tighter at the ends
+            let midFactor = 1.0 - abs(CGFloat(i) / CGFloat(segmentCount) - 0.5) * 2.0
+            let maxOffset = 25.0 + midFactor * 40.0
+            x += CGFloat.random(in: -maxOffset...maxOffset)
+            // Keep bolt on screen
+            x = max(20, min(screenSize.width - 20, x))
+            points.append(CGPoint(x: x, y: y))
+        }
+
+        return LightningBolt(
+            segments: points,
+            lifetime: CGFloat.random(in: 0.30...0.45),
+            flashOpacity: 0.3
+        )
     }
 
     // MARK: Factory

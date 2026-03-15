@@ -128,6 +128,31 @@ struct ContentView: View {
                         }
                     }
 
+                    // Lightning toggle (rain-only)
+                    if settings.weatherType == .rain {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Toggle(isOn: $settings.lightningEnabled) {
+                                HStack {
+                                    Text("Lightning")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                    Text(settings.lightningEnabled ? "On" : "Off")
+                                        .font(.caption.monospacedDigit())
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+
+                            if settings.lightningEnabled {
+                                Text("Random bolts flash across the screen")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+
                     // Drift depth (snow-only, visible when accumulation is on)
                     if settings.weatherType == .snow && settings.accumulationEnabled {
                         VStack(alignment: .leading, spacing: 4) {

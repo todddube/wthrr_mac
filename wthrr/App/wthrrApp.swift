@@ -161,7 +161,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// The window auto-dismisses after 20 seconds or when the user clicks close.
     private func showSplashScreen() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 360, height: 440),
+            contentRect: NSRect(x: 0, y: 0, width: 380, height: 540),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false

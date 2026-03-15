@@ -74,27 +74,7 @@ struct SplashView: View {
             // Content
             VStack(spacing: 0) {
 
-                // Close button — large and visible at top-right
-                HStack {
-                    Spacer()
-                    Button {
-                        onDismiss()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 22, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.7))
-                            .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Close")
-                    .onHover { inside in
-                        if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-                    }
-                }
-                .padding(.top, 14)
-                .padding(.trailing, 14)
-
-                Spacer()
+                Spacer().frame(height: 32)
 
                 // App icon & name
                 VStack(spacing: 8) {
@@ -148,8 +128,8 @@ struct SplashView: View {
 
                 Spacer()
 
-                // Author & countdown
-                VStack(spacing: 6) {
+                // Author
+                VStack(spacing: 4) {
                     Text("by Todd Dube")
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundStyle(.white.opacity(0.7))
@@ -157,18 +137,40 @@ struct SplashView: View {
                     Text("2025")
                         .font(.system(size: 11, weight: .regular, design: .rounded))
                         .foregroundStyle(.white.opacity(0.4))
-
-                    // Countdown pill
-                    Text("Closing in \(secondsRemaining)s")
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.4))
-                        .padding(.top, 4)
                 }
                 .opacity(appeared ? 1 : 0)
+
+                Spacer().frame(height: 16)
+
+                // Close button with animated countdown
+                Button {
+                    onDismiss()
+                } label: {
+                    Text("Close (\(secondsRemaining))")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(.white.opacity(0.2))
+                                .overlay(
+                                    Capsule()
+                                        .stroke(.white.opacity(0.4), lineWidth: 1)
+                                )
+                        )
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .onHover { inside in
+                    if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                }
+                .padding(.horizontal, 40)
                 .padding(.bottom, 20)
+                .opacity(appeared ? 1 : 0)
             }
         }
-        .frame(width: 360, height: 440)
+        .frame(width: 380, height: 540)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .onAppear {
             withAnimation(.easeOut(duration: 0.5)) {

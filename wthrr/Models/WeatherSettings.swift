@@ -79,6 +79,12 @@ class WeatherSettings {
         didSet { UserDefaults.standard.set(maxAccumulationHeight, forKey: "maxAccumulationHeight") }
     }
 
+    /// When true, random lightning bolts flash across the screen during rain mode.
+    /// Has no effect in snow mode.
+    var lightningEnabled: Bool {
+        didSet { UserDefaults.standard.set(lightningEnabled, forKey: "lightningEnabled") }
+    }
+
     /// When true the overlay windows are raised above the Dock so weather effects
     /// appear on top of it. When false (default) the overlay sits below the Dock.
     var showOverDock: Bool {
@@ -128,6 +134,10 @@ class WeatherSettings {
 
         let savedMaxH = UserDefaults.standard.integer(forKey: "maxAccumulationHeight")
         maxAccumulationHeight = savedMaxH > 0 ? savedMaxH : 120
+
+        lightningEnabled = UserDefaults.standard.object(forKey: "lightningEnabled") != nil
+            ? UserDefaults.standard.bool(forKey: "lightningEnabled")
+            : false
 
         showOverDock = UserDefaults.standard.object(forKey: "showOverDock") != nil
             ? UserDefaults.standard.bool(forKey: "showOverDock")

@@ -12,7 +12,7 @@ import SwiftUI
 /// Streak angle varies with wind velocity for a natural wind-driven appearance.
 enum RainRenderer {
 
-    /// Draws all rain effects: puddles (background), streaks (midground), and splashes (foreground).
+    /// Draws all rain effects: lightning flash, puddles, streaks, splashes, and bolt.
     /// - Parameters:
     ///   - context: The Canvas graphics context to draw into.
     ///   - size: The full size of the canvas in points.
@@ -21,6 +21,7 @@ enum RainRenderer {
     ///   - splashes: Active splash effects from raindrop impacts.
     ///   - puddles: Persistent puddles that grow during rain + puddles mode.
     ///   - windVelocity: Current horizontal wind speed in pts/s (tilts rain streaks).
+    ///   - bolt: The currently active lightning bolt, or nil if no strike is in progress.
     static func draw(
         context: GraphicsContext,
         size: CGSize,
@@ -28,7 +29,8 @@ enum RainRenderer {
         particles: [Particle],
         splashes: [Splash],
         puddles: [Puddle],
-        windVelocity: CGFloat
+        windVelocity: CGFloat,
+        bolt: LightningBolt? = nil
     ) {
         let rainColor: Color = isDark
             ? Color(red: 0.78, green: 0.88, blue: 1.0)
@@ -38,10 +40,22 @@ enum RainRenderer {
             ? Color(red: 0.75, green: 0.88, blue: 1.0, opacity: 0.7)
             : Color(red: 0.50, green: 0.62, blue: 0.78, opacity: 0.6)
 
+        // Screen flash behind everything
+        if let bolt, bolt.flashOpacity > 0.001 {
+            var flashCtx = context
+            flashCtx.opacity = bolt.flashOpacity
+            flashCtx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(.white))
+        }
+
         drawPuddles(context: context, size: size, isDark: isDark, puddles: puddles)
         drawStreaks(context: context, particles: particles, windVelocity: windVelocity,
                     rainColor: rainColor)
         drawSplashes(context: context, splashes: splashes, splashColor: splashColor)
+
+        // Lightning bolt on top of everything
+        if let bolt {
+            drawLightningBolt(context: context, bolt: bolt)
+        }
     }
 
     // MARK: Puddle rendering
@@ -196,6 +210,59 @@ enum RainRenderer {
                 ctx.fill(Path(ellipseIn: dotRect), with: .color(splashColor))
             }
         }
+    }
+
+    // MARK: Lightning bolt rendering
+
+    /// Draws a jagged lightning bolt with a soft glow behind a bright core stroke.
+    /// Opacity fades over the bolt's lifetime for a natural flash-and-fade effect.
+    private static func drawLightningBolt(context: GraphicsContext, bolt: LightningBolt) {
+        guard bolt.segments.count >= 2 else { return }
+
+        let progress = bolt.age / bolt.lifetime
+        // Bolt fades out over its lifetime, with a brief re-brighten at 35-45%
+        let boltOpacity: Double
+        if progress < 0.15 {
+            boltOpacity = 1.0
+        } else if progress > 0.35 && progress < 0.45 {
+            boltOpacity = 0.7
+        } else {
+            boltOpacity = Double(max(0, 1.0 - progress * 1.3))
+        }
+        guard boltOpacity > 0.01 else { return }
+
+        var path = Path()
+        path.move(to: bolt.segments[0])
+        for i in 1..<bolt.segments.count {
+            path.addLine(to: bolt.segments[i])
+        }
+
+        // Outer glow — wide, soft, purple-blue tinted
+        var glowCtx = context
+        glowCtx.opacity = boltOpacity * 0.35
+        glowCtx.stroke(
+            path,
+            with: .color(Color(red: 0.6, green: 0.7, blue: 1.0)),
+            style: StrokeStyle(lineWidth: 8, lineCap: .round, lineJoin: .round)
+        )
+
+        // Mid glow — medium width, brighter
+        var midCtx = context
+        midCtx.opacity = boltOpacity * 0.6
+        midCtx.stroke(
+            path,
+            with: .color(Color(red: 0.8, green: 0.85, blue: 1.0)),
+            style: StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round)
+        )
+
+        // Bright core — thin white
+        var coreCtx = context
+        coreCtx.opacity = boltOpacity
+        coreCtx.stroke(
+            path,
+            with: .color(.white),
+            style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round)
+        )
     }
 }
 

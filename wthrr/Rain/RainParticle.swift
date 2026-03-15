@@ -31,6 +31,17 @@ struct Puddle {
     var rippleOpacity: Double   // Fades as ripple expands
 }
 
+// MARK: - Lightning
+
+/// A lightning bolt composed of jagged line segments, visible for a brief flash.
+/// The bolt originates near the top of the screen and zigzags downward.
+struct LightningBolt {
+    let segments: [CGPoint]     // Ordered points from top to bottom forming the bolt path
+    var age: CGFloat = 0        // Seconds elapsed since the strike
+    let lifetime: CGFloat       // Total visible duration (~0.35 s)
+    var flashOpacity: Double    // Full-screen flash intensity, fades quickly
+}
+
 // MARK: - Rain particle factory
 
 /// Creates rain particles with randomised streak properties.

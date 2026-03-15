@@ -33,7 +33,8 @@ struct WeatherView: View {
                     particles: model.particles,
                     splashes: model.splashes,
                     puddles: model.puddles,
-                    windVelocity: model.currentWindVelocity
+                    windVelocity: model.currentWindVelocity,
+                    bolt: model.activeBolt
                 )
             } else {
                 SnowRenderer.draw(
