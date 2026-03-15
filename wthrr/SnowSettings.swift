@@ -1,49 +1,78 @@
+// SnowSettings.swift
+// wthrr — macOS decorative snowfall overlay
+//
+// Author: Todd Dube
+// GitHub: https://github.com/todddube/wthrr_mac
+
 import SwiftUI
 
-/// Which displays should show snow.
-enum DisplayMode: String, CaseIterable {
-    case all      = "all"
-    case selected = "selected"
+/// Selects the active weather effect shown on overlay windows.
+enum WeatherType: String, CaseIterable {
+    case snow = "snow"   // Snowflakes with optional drift accumulation
+    case rain = "rain"   // Raindrops with splashes and optional puddles
 }
 
-/// Persisted snow simulation settings shared across the whole app.
+/// Determines which physical displays the snow overlay appears on.
+enum DisplayMode: String, CaseIterable {
+    case all      = "all"       // Show snow on every connected display
+    case selected = "selected"  // Show snow only on user-chosen displays
+}
+
+/// Observable singleton that holds all snow simulation settings.
+/// Every property persists its value to UserDefaults via `didSet` so settings
+/// survive app restarts. Shared via `.environment(SnowSettings.shared)`.
 @Observable
 class SnowSettings {
     /// Shared instance used by both the menu bar popover and the overlay windows.
     static let shared = SnowSettings()
 
+    // MARK: - Weather type
+
+    /// The currently active weather effect. Switching rebuilds the particle system.
+    var weatherType: WeatherType {
+        didSet { UserDefaults.standard.set(weatherType.rawValue, forKey: "weatherType") }
+    }
+
     // MARK: - Snow physics
 
-    /// Number of snowflakes per screen. Range: 20–400.
+    /// Number of snowflakes rendered per screen. Range: 20–400.
     var flakeCount: Int {
         didSet { UserDefaults.standard.set(flakeCount, forKey: "flakeCount") }
     }
 
-    /// Multiplier on all fall speeds. Range: 0.25 (very slow) – 3.0 (blizzard).
+    /// Multiplier applied to all flake fall speeds. Range: 0.25 (very slow) – 3.0 (blizzard).
     var speedMultiplier: Double {
         didSet { UserDefaults.standard.set(speedMultiplier, forKey: "speedMultiplier") }
     }
 
-    /// Seed that drives per-flake randomness. Changing this re-randomises everything.
+    /// Seed that drives per-flake randomness via SeededRNG. Changing this value
+    /// causes the entire snowflake population to be re-generated with new positions,
+    /// sizes, speeds, and wobble characteristics.
     var randomSeed: Int {
         didSet { UserDefaults.standard.set(randomSeed, forKey: "randomSeed") }
     }
 
     /// Maximum wind strength. 0 = dead calm, 1 = full gale.
-    /// Controls both how hard gusts blow and how frequently they change direction.
+    /// Controls both peak gust speed (15–140 pts/s) and gust interval frequency.
     var windStrength: Double {
         didSet { UserDefaults.standard.set(windStrength, forKey: "windStrength") }
     }
 
+    /// When true, snowflakes pile up at the bottom of the screen instead of recycling.
+    /// The drift respects the Dock position and redraws when the Dock is resized or moved.
+    var accumulationEnabled: Bool {
+        didSet { UserDefaults.standard.set(accumulationEnabled, forKey: "accumulationEnabled") }
+    }
+
     // MARK: - Display selection
 
-    /// Whether to show snow on all displays or only the selected ones.
+    /// Whether to show snow on all displays or only the manually selected ones.
     var displayMode: DisplayMode {
         didSet { UserDefaults.standard.set(displayMode.rawValue, forKey: "displayMode") }
     }
 
-    /// CGDirectDisplayIDs (as strings) of the screens that should show snow
-    /// when displayMode == .selected.
+    /// CGDirectDisplayIDs (stored as strings) of screens that should show snow
+    /// when `displayMode == .selected`.
     var selectedDisplayIDs: Set<String> {
         didSet {
             let arr = Array(selectedDisplayIDs)
@@ -53,7 +82,12 @@ class SnowSettings {
 
     // MARK: - Init
 
+    /// Loads all settings from UserDefaults, falling back to sensible defaults
+    /// if a key has never been written (first launch).
     init() {
+        let savedWeatherTypeRaw = UserDefaults.standard.string(forKey: "weatherType") ?? ""
+        weatherType = WeatherType(rawValue: savedWeatherTypeRaw) ?? .snow
+
         let savedCount = UserDefaults.standard.integer(forKey: "flakeCount")
         flakeCount = savedCount > 0 ? savedCount : 180
 
@@ -67,6 +101,10 @@ class SnowSettings {
         // UserDefaults returns 0.0 for a missing key, so treat 0 as "not set" → default 0.5
         windStrength = UserDefaults.standard.object(forKey: "windStrength") != nil ? savedWind : 0.5
 
+        accumulationEnabled = UserDefaults.standard.object(forKey: "accumulationEnabled") != nil
+            ? UserDefaults.standard.bool(forKey: "accumulationEnabled")
+            : false
+
         let savedMode = UserDefaults.standard.string(forKey: "displayMode") ?? ""
         displayMode = DisplayMode(rawValue: savedMode) ?? .all
 
@@ -76,11 +114,53 @@ class SnowSettings {
 
     // MARK: - Helpers
 
+    /// Assigns a new random seed, causing the snowflake population to be fully
+    /// regenerated with different sizes, positions, and motion characteristics.
     func reroll() {
         randomSeed = Int.random(in: 1...999_999)
     }
 
-    /// Returns true if snow should be shown on the given screen.
+    // MARK: - Weather-type display helpers
+
+    /// SF Symbol name for the current weather type, used in the header and menu bar.
+    var weatherIcon: String {
+        weatherType == .rain ? "cloud.rain.fill" : "cloud.snow.fill"
+    }
+
+    /// Temperature string appropriate for the current weather type.
+    var temperatureText: String {
+        weatherType == .rain ? "52\u{00B0}F" : "28\u{00B0}F"
+    }
+
+    /// Human-readable name of the current weather type.
+    var weatherLabel: String {
+        weatherType == .rain ? "Rain" : "Snow"
+    }
+
+    /// Unit name for a single particle ("flakes" for snow, "drops" for rain).
+    var particleUnit: String {
+        weatherType == .rain ? "drops" : "flakes"
+    }
+
+    /// Label for the accumulation toggle (context-aware per weather type).
+    var accumulationLabel: String {
+        weatherType == .rain ? "Puddles" : "Accumulation"
+    }
+
+    /// Description shown below the accumulation toggle when it is enabled.
+    var accumulationDescription: String {
+        weatherType == .rain
+            ? "Puddles form and grow at the bottom of the screen"
+            : "Flakes pile up and go around the Dock"
+    }
+
+    /// Label for the re-randomise button (context-aware per weather type).
+    var rerollLabel: String {
+        weatherType == .rain ? "Re-randomise Drops" : "Re-randomise Flakes"
+    }
+
+    /// Returns `true` if snow should be rendered on the given screen based on
+    /// the current `displayMode` and `selectedDisplayIDs`.
     func isEnabled(for screen: NSScreen) -> Bool {
         switch displayMode {
         case .all:
@@ -90,7 +170,8 @@ class SnowSettings {
         }
     }
 
-    /// Toggle a specific screen's selection on/off.
+    /// Toggles the given screen in or out of `selectedDisplayIDs`.
+    /// Has no effect unless `displayMode == .selected`.
     func toggleDisplay(_ screen: NSScreen) {
         let id = screen.displayID
         if selectedDisplayIDs.contains(id) {
@@ -104,7 +185,9 @@ class SnowSettings {
 // MARK: - NSScreen convenience
 
 extension NSScreen {
-    /// Stable CGDirectDisplayID as a String — persisted to UserDefaults.
+    /// The screen's stable CGDirectDisplayID expressed as a String,
+    /// suitable for persisting to UserDefaults. Falls back to `localizedName`
+    /// if the display ID cannot be read from the device description dictionary.
     var displayID: String {
         guard let id = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID else {
             return localizedName   // fallback

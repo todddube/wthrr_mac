@@ -1,12 +1,28 @@
+// wthrrApp.swift
+// wthrr — macOS decorative snowfall overlay
+//
+// Author: Todd Dube
+// GitHub: https://github.com/todddube/wthrr_mac
+
 import SwiftUI
 import Darwin
 
+/// App entry point. Registers the menu bar extra and wires up the AppDelegate.
+/// The menu bar icon updates dynamically when the user switches weather type.
 @main
 struct wthrrApp: App {
     @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
 
+    /// Mirrors the persisted weather type so SwiftUI can react to changes
+    /// in the MenuBarExtra label — @AppStorage re-evaluates `body` when it changes.
+    @AppStorage("weatherType") private var weatherTypeRaw: String = "snow"
+
+    private var menuBarIcon: String {
+        weatherTypeRaw == "rain" ? "cloud.rain.fill" : "cloud.snow.fill"
+    }
+
     var body: some Scene {
-        MenuBarExtra("wthrr", systemImage: "cloud.snow.fill") {
+        MenuBarExtra("wthrr", systemImage: menuBarIcon) {
             ContentView()
                 .environment(SnowSettings.shared)
         }
@@ -14,11 +30,15 @@ struct wthrrApp: App {
     }
 }
 
+/// Handles app lifecycle: enforces single-instance, creates the snow overlay windows,
+/// and installs a SIGTERM handler so the MenuBarExtra icon is cleanly removed on quit.
 class AppDelegate: NSObject, NSApplicationDelegate {
     static weak var shared: AppDelegate?
 
     private(set) var snowflakeWindowController: SnowflakeWindowController?
 
+    /// Called once the app has finished launching. Ensures only one instance runs,
+    /// creates the overlay window controller, and sets up SIGTERM handling.
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
 
@@ -47,11 +67,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         objc_setAssociatedObject(self, &AppDelegate.sigTermKey, sigTermSource, .OBJC_ASSOCIATION_RETAIN)
     }
 
+    /// Tears down overlay windows before the process exits, ensuring clean removal
+    /// of the snow layer and MenuBarExtra icon.
     func applicationWillTerminate(_ notification: Notification) {
         snowflakeWindowController?.tearDown()
         snowflakeWindowController = nil
     }
 
+    /// Keeps the app alive even when all regular windows are closed —
+    /// the menu bar extra is the only UI surface.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
     }
