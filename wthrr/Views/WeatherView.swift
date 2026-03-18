@@ -23,7 +23,6 @@ struct WeatherView: View {
             _ = model.tick
 
             let isDark = colorScheme == .dark
-            let isRain = settings.weatherType == .rain
 
             switch settings.weatherType {
             case .rain:
