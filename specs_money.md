@@ -1,246 +1,352 @@
 # wthrr Monetization Spec
 
-## Model: Free Download → Time-Limited Trial → Paid License
-
-The app is free to download and install. All features work fully for **2 minutes** per session, then the weather effect pauses and a prompt appears asking the user to enter a license key. This is a one-time purchase, not a subscription.
+## Price: $4.99 one-time license — direct sales, no App Store
 
 ---
 
-## 1. Trial Behavior
+## How Other Indie Mac Apps Do It
 
-### How it works
-- On launch, a 2-minute countdown timer starts (managed in `SnowflakeAnimationModel`).
-- When the timer expires:
-  1. The particle animation pauses (timer invalidated, particles freeze in place).
-  2. A **license prompt overlay** appears on the menu bar popover (not on the weather overlay windows).
-  3. The overlay shows: "Trial ended — enter your license key to unlock wthrr" with a text field and "Activate" button, plus a "Buy License" link.
-  4. A "Restart Trial" button lets users get another 2 minutes (unlimited restarts — low friction, encourages purchase through mild annoyance rather than hard locks).
-- If the user quits and relaunches, the 2-minute trial resets (per-session, not cumulative).
+Before choosing a strategy, here's what works in the wild:
 
-### Implementation
-- Add a `LicenseState` enum: `.trial(secondsRemaining)`, `.expired`, `.licensed`
-- Add `LicenseManager` class (singleton) that:
-  - Stores the license key in the macOS **Keychain** (not UserDefaults — harder to tamper with)
-  - Validates on launch by checking the stored key
-  - Manages the countdown timer
-  - Publishes state changes so the UI can react
+### Shottr (Screenshot tool — $8)
+- **30-day free trial**, all features unlocked during trial
+- After trial: app still launches but core features are locked
+- One license covers **one user on up to 5 Macs**
+- Sells direct via website (no App Store)
+- Also offers a $30 "Friends Club" tier for experimental features + priority support
+- **Takeaway:** Generous trial builds habit → user pays to keep the tool they now rely on
 
-### Why per-session (not cumulative)?
-- Simpler to implement (no persistent timer state)
-- More generous — users can keep restarting, which builds familiarity
-- The interruption alone is enough motivation to buy
+### Bartender (Menu bar organizer — $29)
+- **4-week free trial**, fully functional
+- License key format: username + alphanumeric key
+- Entered in Preferences → Register
+- Direct sales via macbartender.com
+- Version upgrades require new purchase (paid upgrades)
+- **Takeaway:** Even at $29, they give a full month free — confidence in the product
+
+### Hand Mirror (Camera check — Free + $4.99)
+- Free base app on the **Mac App Store**
+- $4.99 one-time in-app purchase unlocks "Plus" features (Smart Window, Custom Icons, Reactions)
+- Free version is fully useful; paid version adds power-user features
+- **Takeaway:** Feature-gated freemium works when free tier has clear standalone value
+
+### Ice (Menu bar manager — Free/Open Source)
+- Completely free, GPL-3.0 licensed
+- Accepts donations via Gumroad
+- **Takeaway:** Open source can work, but leaves money on the table for quality indie apps
+
+### Key Pattern
+Most successful indie Mac utilities at the $5–$10 range use either:
+1. **Time-limited trial → paid license** (Shottr, Bartender) — best for apps where the full experience IS the product
+2. **Free tier + paid upgrade** (Hand Mirror) — best when features naturally tier
+
+For wthrr, the full experience IS the product (weather overlays). There's no obvious "free tier" that makes sense on its own. **Time-limited trial is the right model.**
 
 ---
 
-## 2. License Key System
+## Trial Strategy Options
 
-### Option A: Gumroad (Recommended — Zero Infrastructure)
-
-**Gumroad** (gumroad.com) handles everything: payment processing, license key generation, email delivery, and a validation API.
+### Option A: 14-Day Full Trial (Recommended)
 
 **How it works:**
-1. Create a Gumroad product for wthrr (e.g., $4.99 one-time).
-2. Gumroad generates a unique license key per purchase and emails it to the buyer.
-3. In the app, when the user enters a key, call Gumroad's license verification API:
-   ```
-   POST https://api.gumroad.com/v2/licenses/verify
-   Body: product_id=<your_product_id>&license_key=<user_key>
-   ```
-4. If the API returns `success: true`, store the key in Keychain and unlock permanently.
-5. The app should also cache the validation result locally (Keychain) so it works offline after the first activation.
+- Download is free. All features work for **14 days** — snow, rain, AI storm, all displays, full customization.
+- On day 10, a subtle banner appears in the popover: *"Trial ends in 4 days — get wthrr for $4.99"*
+- On day 15, overlays stop rendering. The popover shows a clean purchase/activate screen.
+- A "Preview" button lets users see a **30-second demo** of the effects after trial expiry (keeps the hook alive).
+
+**Why 14 days:**
+- Industry data shows 14-day trials convert 2–3× better than immediate paywalls
+- Users build the habit of seeing weather on their desktop — it becomes part of their setup
+- Shottr and Bartender both use multi-week trials and convert well at higher price points
+- 14 days is long enough to experience seasonal weather changes and different modes
+
+**After trial expires:**
+- Popover opens normally, shows settings (read-only) + purchase prompt
+- Overlays don't render (clean stop, no frozen particles)
+- "Preview for 30 seconds" button gives a taste to re-motivate purchase
+- "Activate License" field + "Buy License ($4.99)" button
+
+**Implementation:**
+- `LicenseManager` stores `trialStartDate` in Keychain (tamper-resistant)
+- On each launch: `if daysSince(trialStartDate) > 14 && !isLicensed → expired`
+- No server call needed for trial logic — purely local
+
+### Option B: 2-Minute Per-Session Trial (Original Spec)
+
+**How it works:**
+- All features work for **2 minutes** per launch, then animation pauses
+- "Restart Preview" button gives another 2 minutes (unlimited restarts)
+- Purchase prompt appears when timer expires
 
 **Pros:**
-- Zero backend infrastructure to build or maintain
-- Gumroad handles payments, taxes, refunds, email receipts
-- License API is simple (one HTTP POST)
-- Dashboard shows sales, analytics, refund rates
-- Supports discount codes, bundles, "pay what you want"
+- Zero infrastructure (no persistent date tracking needed)
+- Users can keep restarting — low friction, mild annoyance drives purchase
+- Simpler to implement
 
 **Cons:**
-- Gumroad takes ~10% fee (recently changed — check current rates)
-- You depend on their API uptime for first activation
-- Less control over the experience
+- 2 minutes may not be enough to appreciate the effects
+- Frequent interruptions can feel hostile rather than motivating
+- Users may just never bother buying because the restart loop is "good enough"
 
-### Option B: LemonSqueezy (Similar, Newer Alternative)
+### Option C: Feature-Limited Free Tier + Paid Unlock
 
-Same model as Gumroad but with a more modern API and better macOS app support. Also handles license key generation and verification via API. Worth comparing fees.
+**How it works:**
+- **Free forever:** Snow mode only, single display, default settings
+- **Paid ($4.99):** Unlocks rain, AI storm, multi-display, full particle/wind/speed controls
 
-### Option C: Paddle (More Polished, Mac-Native)
+**What's free vs paid:**
 
-Paddle is popular with Mac indie developers. It provides:
-- Payment processing (acts as merchant of record — handles EU VAT, sales tax)
-- License key generation and verification SDK
-- A native macOS licensing SDK (`Paddle.framework`) that handles the activation UI for you
-- In-app purchase prompts, trial management, receipt validation
+| Feature | Free | Licensed |
+|---------|------|----------|
+| Snow overlay | ✅ | ✅ |
+| Rain overlay | ❌ | ✅ |
+| AI Storm overlay | ❌ | ✅ |
+| Multi-display | ❌ (primary only) | ✅ |
+| Particle count slider | Limited (1–50) | Full (1–300) |
+| Wind control | ❌ (default wind) | ✅ |
+| Speed control | ❌ (default speed) | ✅ |
 
 **Pros:**
-- Purpose-built for Mac apps
-- Native SDK means less UI work
-- Handles all tax compliance globally
+- Free tier has genuine value — snow on one screen is still cool
+- No timer pressure — users upgrade when they want more
+- Locked features visible in UI create natural "upgrade moments"
+- Word of mouth: free users tell friends, some convert
 
 **Cons:**
-- Higher fees (~5-10% + per-transaction)
-- More complex integration
-- SDK adds a framework dependency
+- More complex code (feature flags throughout settings and renderers)
+- Risk of free tier being "enough" for casual users
+- Harder to showcase rain and AI storm modes if users never see them
 
-### Option D: DIY with Stripe + Email (More Work, Full Control)
+**Hybrid possibility:** Free tier + 3-day "Premium Preview" where all features are unlocked so users can see what they're missing, then reverts to free tier.
 
-Build a minimal backend:
-1. **Stripe Checkout** — create a payment link or hosted checkout page.
-2. **Stripe Webhook** — on successful payment, generate a license key (UUID or signed token) and email it to the buyer via **SendGrid**, **Postmark**, or **AWS SES**.
-3. **Validation** — the app sends the key to your server (or validates a signed JWT offline).
+### Recommendation: Option A (14-Day Trial)
 
-**Infrastructure needed:**
-- A small server or serverless function (Cloudflare Worker, AWS Lambda, or Vercel edge function)
-- ~50 lines of code for the webhook handler
-- Email service account
+The full experience IS the product. Feature-gating snow vs. rain vs. AI storm fragments the value proposition. A generous trial lets users fall in love with the complete experience, then pays for itself through higher conversion.
 
-**Pros:**
-- Full control over keys, pricing, customer data
-- Lower per-transaction fees (Stripe: 2.9% + $0.30)
-- Can do offline validation with signed keys (no server call needed after generation)
-
-**Cons:**
-- You build and maintain the infrastructure
-- You handle tax compliance
-- More moving parts
+However, **Option C (Feature-Limited)** is worth considering if you want organic word-of-mouth growth — free users are free marketing.
 
 ---
 
-## 3. Recommendation: Start with Gumroad
+## License Key Platform
 
-For a solo developer with a small menu bar utility, Gumroad is the clear winner:
+### LemonSqueezy (Recommended)
 
-| Concern | Gumroad Solves It |
-|---------|-------------------|
-| Payment processing | Yes (Stripe-backed) |
-| License key generation | Yes (automatic per sale) |
-| License key delivery | Yes (emailed to buyer) |
-| License verification API | Yes (one POST endpoint) |
-| Tax handling | Yes (they're merchant of record) |
-| Refunds | Yes (dashboard or API) |
-| Analytics | Yes (sales dashboard) |
-| Infrastructure to maintain | None |
+**Why LemonSqueezy over Gumroad:**
+- **Lower fees:** 5% + $0.50 per transaction (vs Gumroad's ~10%)
+- On a $4.99 sale: LemonSqueezy takes ~$0.75, Gumroad takes ~$0.50. Close enough — but LemonSqueezy's tooling is better.
+- **Purpose-built license key system:** Each purchase auto-generates a license key with configurable activation limits
+- **API for validation:** Simple REST endpoint to verify keys
+- **Merchant of record:** Handles global sales tax, EU VAT — you don't deal with tax compliance
+- **Modern dashboard:** Better UX than Gumroad for managing products, keys, customers
+- **No approval process:** Sign up and start selling immediately
 
-**Total new code in the app: ~200-300 lines:**
-- `LicenseManager.swift` — Keychain storage, Gumroad API call, state management
-- `LicensePromptView.swift` — SwiftUI view with text field + buttons
-- Timer logic in `SnowflakeAnimationModel` — pause after 2 min if unlicensed
-- "Buy License" button opens Gumroad product page in browser
+**How it works:**
+1. Create LemonSqueezy account → create product "wthrr" at $4.99
+2. Configure license key settings: max 3 activations per key (covers multiple Macs)
+3. Customer buys → gets license key via email automatically
+4. In the app, user enters key → app calls LemonSqueezy API to validate
+5. On success, store key in Keychain → app unlocked permanently
+
+**API call:**
+```
+POST https://api.lemonsqueezy.com/v1/licenses/validate
+Body: { "license_key": "<user_key>", "instance_name": "<machine_id>" }
+```
+
+**Revenue per sale:**
+- Price: $4.99
+- LemonSqueezy fee: ~$0.75
+- **You keep: ~$4.24**
+
+### Alternative: Gumroad
+
+Same basic model. Slightly higher fees but simpler API. Good fallback if LemonSqueezy doesn't feel right.
+
+**API call:**
+```
+POST https://api.gumroad.com/v2/licenses/verify
+Body: product_id=<id>&license_key=<key>
+```
+
+### Alternative: Paddle
+
+More polished, has a native macOS SDK that handles the entire activation UI for you. Popular with higher-priced Mac apps. Overkill for a $5 utility but worth knowing about.
+
+### Alternative: DIY with Stripe
+
+Full control, lowest fees (2.9% + $0.30), but you build and maintain everything: payment page, license key generation, email delivery, validation endpoint. Only worth it if you plan to sell multiple products.
+
+### Platform Comparison
+
+| | LemonSqueezy | Gumroad | Paddle | DIY + Stripe |
+|---|---|---|---|---|
+| Fee on $4.99 sale | ~$0.75 | ~$0.50 | ~$0.75 | ~$0.44 |
+| License key generation | ✅ Auto | ✅ Auto | ✅ Auto | 🔧 Build it |
+| License validation API | ✅ | ✅ | ✅ SDK | 🔧 Build it |
+| Tax compliance | ✅ | ✅ | ✅ | ❌ You handle |
+| Activation limits | ✅ Built-in | ⚠️ Basic | ✅ | 🔧 Build it |
+| Setup time | 1 hour | 1 hour | 2–3 hours | 1–2 days |
+| Infrastructure to maintain | None | None | None | Server + email |
 
 ---
 
-## 4. Implementation Plan
+## Implementation Plan
 
-### Phase 1: License Manager (~1 day)
+### Phase 1: LicenseManager (~1 day)
 
 ```
 LicenseManager.swift
-├── LicenseState enum: .trial / .expired / .licensed
-├── storedKey: String? (read/write Keychain)
-├── validate(key:) async -> Bool (call Gumroad API)
-├── trialSecondsRemaining: Int (published)
-├── startTrial() — begins 120s countdown
-├── restartTrial() — resets to 120s
-└── activate(key:) async -> Result<Void, LicenseError>
+├── LicenseState enum: .trial(daysRemaining) / .trialExpired / .licensed
+├── trialStartDate: Date? (stored in Keychain)
+├── storedLicenseKey: String? (stored in Keychain)
+├── isLicensed: Bool (computed)
+├── trialDaysRemaining: Int (computed)
+├── startTrialIfNeeded() — sets trialStartDate on first launch
+├── validate(key:) async -> Result<Void, LicenseError>
+│   └── calls LemonSqueezy API, stores key on success
+├── checkStatus() -> LicenseState
+└── deactivate() — for testing/support
 ```
 
-### Phase 2: Trial Timer (~0.5 day)
+**Keychain storage** (not UserDefaults) because:
+- Harder to tamper with than plist files
+- Survives app reinstalls (persists across updates)
+- Encrypted at rest by macOS
 
-In `SnowflakeAnimationModel.advance()`:
+### Phase 2: Trial Logic (~0.5 day)
+
+In `WeatherAnimationModel.advance()`:
 ```swift
-// Check license state before advancing particles
-guard LicenseManager.shared.state != .expired else { return }
+guard LicenseManager.shared.state != .trialExpired else { return }
 ```
 
-Decrement `trialSecondsRemaining` each second. When it hits 0, set state to `.expired`.
+Trial countdown:
+- `trialStartDate` set on first launch
+- Each launch computes `Calendar.current.dateComponents([.day], from: trialStartDate, to: .now).day`
+- Days 1–9: No UI indication (let them enjoy it)
+- Days 10–14: Subtle banner in popover footer
+- Day 15+: Overlays stop, purchase screen shown
 
 ### Phase 3: License Prompt UI (~0.5 day)
 
-Add a `LicensePromptView` that appears in the menu bar popover when trial expires:
-- Text: "Your 2-minute preview has ended"
+**During trial (days 10–14) — soft nudge:**
+- Small text in popover footer: "Trial: 4 days remaining · Buy wthrr"
+- Non-intrusive, no modals, no blocking
+
+**After trial — purchase screen in popover:**
+- "Your 14-day preview has ended"
 - TextField for license key + "Activate" button
-- "Buy License ($X.99)" button → opens Gumroad URL
-- "Restart Preview" button → calls `restartTrial()`
-- On successful activation: dismiss prompt, resume animation, never show again
+- "Buy License ($4.99)" button → opens LemonSqueezy product page
+- "Preview for 30 seconds" button → runs full effects briefly
+- On successful activation: dismiss prompt, resume overlays, show "Licensed ✓" badge
 
-### Phase 4: Gumroad Setup (~1 hour)
+### Phase 4: LemonSqueezy Setup (~1 hour)
 
-1. Create Gumroad account
-2. Create product: "wthrr — Weather Effects for Mac"
-3. Set price ($3.99–$5.99 sweet spot for menu bar utilities)
-4. Copy product permalink (for "Buy" button) and product ID (for API verification)
-5. Test with Gumroad's test mode
+1. Create account at lemonsqueezy.com
+2. Create store + product: "wthrr — Weather Effects for Mac"
+3. Set price: $4.99, one-time purchase
+4. Configure license keys: max 3 activations per key
+5. Copy product URL (for Buy button) and API key (for validation)
+6. Test in sandbox mode
 
 ### Phase 5: Polish (~0.5 day)
 
-- Show remaining trial time in popover (subtle, e.g., "Preview: 1:42 remaining")
-- Offline grace: if already activated, skip API call (trust Keychain)
-- Handle edge cases: no internet during activation (show error + retry), invalid key, revoked key
-- Add "Licensed" badge in the About section when activated
+- Offline handling: if already licensed, trust Keychain (no API call needed)
+- First activation requires internet → show friendly error if offline
+- "Licensed" badge in About/footer when activated
+- Handle edge cases: invalid key, revoked key, max activations reached
+- Support email link in purchase screen for license recovery
 
 ---
 
-## 5. Pricing Strategy
+## Pricing Strategy
 
-| Price Point | Rationale |
-|-------------|-----------|
-| **$3.99** | Impulse buy territory. Low friction. |
-| **$4.99** | Sweet spot for Mac menu bar utilities. Most indie weather/utility apps land here. |
-| **$5.99** | Still reasonable. Leaves room for sales/discounts. |
+**$4.99** is the sweet spot:
+- Impulse buy territory for Mac users
+- Competitive with Hand Mirror ($4.99), under Shottr ($8), well under Bartender ($29)
+- Leaves room for promotional pricing ($2.99 sales)
 
-**Suggested: $4.99** with occasional $2.99 sales.
+**Optional:** LemonSqueezy supports "pay what you want" — set $2.99 minimum, $4.99 suggested. Some users pay more, and it signals generosity.
 
-Consider a **"pay what you want"** minimum of $2.99 on Gumroad — some users will pay more, and it feels generous.
-
----
-
-## 6. Alternatives Considered & Rejected
-
-### Mac App Store In-App Purchase
-- Apple takes 30% (15% for small business program)
-- Sandboxing restrictions may interfere with overlay windows (cross-screen transparent windows need specific entitlements)
-- App Review process adds friction for updates
-- However: built-in payment + StoreKit handles everything natively
-
-**Verdict:** The overlay window architecture may conflict with App Store sandboxing. Direct distribution with Gumroad avoids this entirely.
-
-### Subscription Model
-- Overkill for a decorative utility — users expect one-time purchase
-- Creates ongoing obligation to deliver value
-- Higher churn, more support burden
-
-**Verdict:** One-time purchase is the right fit.
-
-### Freemium (Free Forever + Paid Premium Features)
-- Hard to gate features when the app is simple (all features are "the app")
-- Time-limiting is cleaner than feature-limiting for this type of product
-
-**Verdict:** Time-limited trial is better than feature gating here.
+**Discount opportunities:**
+- Launch week: $2.99 intro price
+- Black Friday / holiday sales: $2.99
+- Bundle with future apps if you build more
 
 ---
 
-## 7. Anti-Piracy (Keep It Simple)
+## Distribution
 
-Don't over-invest in DRM. For a $5 app:
+Since we're avoiding the App Store:
 
-- **Keychain storage** makes casual tampering harder than UserDefaults
-- **Server-side validation** (Gumroad API) on first activation prevents key-sharing at scale
-- **Optional:** tie the key to a machine ID (hardware UUID) — Gumroad supports `increment_uses_count` to limit activations per key (e.g., 3 machines)
-- **Don't:** obfuscate code, add aggressive checks, or punish paying users with friction
+### Website + Direct Download
+- Host a simple landing page (GitHub Pages, Netlify, or Carrd)
+- DMG download with the app inside
+- "Buy License" links to LemonSqueezy checkout
+- Users drag app to /Applications as usual
 
-If someone pirates a $5 utility, they were never going to pay. Focus energy on making the purchase experience smooth.
+### Code Signing & Notarization (Required)
+- **Must** sign with a Developer ID certificate (not App Store cert)
+- **Must** notarize with Apple — otherwise macOS Gatekeeper blocks the app
+- Cost: $99/year Apple Developer Program membership
+- Without this, users get scary "unidentified developer" warnings that kill conversions
+
+### Sparkle for Updates
+- Use the [Sparkle framework](https://sparkle-project.org/) for auto-updates
+- Hosts an appcast XML file on your server/GitHub
+- Users get update prompts just like App Store apps
+- This is how Shottr, Bartender, and most direct-distribution Mac apps handle updates
 
 ---
 
-## 8. Summary
+## Anti-Piracy (Keep It Proportional)
 
-| Component | Solution | Cost to You |
-|-----------|----------|-------------|
-| Payment processing | Gumroad | ~10% per sale |
-| License key generation | Gumroad (automatic) | $0 |
-| License delivery | Gumroad (email) | $0 |
-| License verification | Gumroad API (1 endpoint) | $0 |
-| Backend infrastructure | None needed | $0 |
-| New app code | ~200-300 lines of Swift | 2-3 days of work |
+For a $5 app, minimal protection is the right call:
+
+- **Keychain storage** prevents casual UserDefaults editing
+- **Server validation on first activation** prevents mass key sharing (LemonSqueezy tracks activation count)
+- **3-machine limit per key** is generous for legitimate users, limiting for sharers
+- **Don't:** obfuscate code, check on every launch, add aggressive DRM, phone home constantly
+- **Philosophy:** If someone pirates a $5 utility, they were never going to pay. Make the purchase experience so smooth that paying is easier than pirating.
+
+---
+
+## Revenue Projections (Napkin Math)
+
+| Scenario | Downloads/mo | Conversion | Sales/mo | Revenue/mo (after fees) |
+|----------|-------------|------------|----------|------------------------|
+| Modest | 500 | 5% | 25 | ~$106 |
+| Good | 2,000 | 8% | 160 | ~$678 |
+| Great | 5,000 | 10% | 500 | ~$2,120 |
+
+These assume direct traffic from Product Hunt, Reddit, Twitter/X, Hacker News posts, and word of mouth. The 14-day trial with a $4.99 price point should convert in the 5–10% range based on industry benchmarks for indie Mac utilities.
+
+---
+
+## Decision Matrix: Which Trial Model?
+
+| Factor | 14-Day Trial (A) | 2-Min Session (B) | Feature-Limited (C) |
+|--------|------------------|--------------------|---------------------|
+| Conversion rate | ⭐⭐⭐ Highest | ⭐⭐ Medium | ⭐ Lowest |
+| Implementation complexity | Medium | Low | High |
+| User experience | Best (no interruptions) | Worst (constant pauses) | Good (but limited) |
+| Word of mouth potential | Medium | Low | ⭐⭐⭐ Highest (free users share) |
+| Code changes needed | ~300 lines | ~200 lines | ~500+ lines (feature flags) |
+| Risk of "good enough" free tier | None (expires) | Low (restart loop) | High (snow-only may suffice) |
+
+**Bottom line:** Start with Option A (14-day trial). If you later want organic growth, add a free tier (Option C) as v2 — the license infrastructure is the same either way.
+
+---
+
+## Summary
+
+| Component | Solution | Cost |
+|-----------|----------|------|
+| Payment + license keys | LemonSqueezy | ~$0.75/sale |
+| Trial model | 14-day full-feature trial | $0 |
+| License storage | macOS Keychain | $0 |
+| Code signing + notarization | Apple Developer ID | $99/year |
+| Auto-updates | Sparkle framework | $0 |
+| Landing page | GitHub Pages / Netlify | $0 |
+| New app code | ~300 lines Swift | ~2–3 days |
 | Ongoing maintenance | Near zero | — |

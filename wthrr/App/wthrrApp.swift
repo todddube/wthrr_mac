@@ -37,6 +37,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
     private var splashWindow: NSWindow?
+    /// True when the splash was triggered manually via the settings button,
+    /// meaning menu-bar interactions should NOT auto-dismiss it.
+    private var splashIsManual = false
 
     /// Builds the NSStatusItem and NSPopover, then starts the overlay.
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -114,6 +117,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if popover.isShown {
             popover.performClose(sender)
         } else {
+            if !splashIsManual { dismissSplashScreen() }
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
@@ -123,6 +127,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func showContextMenu() {
         // Close the popover first so it doesn't overlap the menu.
         popover?.performClose(nil)
+        if !splashIsManual { dismissSplashScreen() }
 
         let menu = NSMenu()
 
@@ -163,8 +168,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Splash screen
 
     /// Creates and displays a centred splash window with live weather animation.
-    /// The window auto-dismisses after 20 seconds or when the user clicks close.
-    private func showSplashScreen() {
+    /// The window auto-dismisses after the countdown or when the user clicks close.
+    /// Pass `manual: true` when triggered from the settings panel so that
+    /// opening the menu bar popover does not immediately dismiss the splash.
+    func showSplashScreen(manual: Bool = false) {
+        splashIsManual = manual
         let window = KeyableBorderlessWindow(
             contentRect: NSRect(x: 0, y: 0, width: 380, height: 540),
             styleMask: [.borderless],
@@ -193,6 +201,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func dismissSplashScreen() {
         guard let window = splashWindow else { return }
         splashWindow = nil
+        splashIsManual = false
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.3
             window.animator().alphaValue = 0

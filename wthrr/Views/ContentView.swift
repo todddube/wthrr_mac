@@ -254,22 +254,30 @@ struct ContentView: View {
                         settings.reroll()
                     } label: {
                         Label(settings.rerollLabel, systemImage: "shuffle")
-                            .font(.caption)
+                            .font(.body.weight(.semibold))
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
+                    .controlSize(.regular)
                 }
                 .padding(.horizontal, 16)
 
                 Divider()
                     .padding(.vertical, 12)
 
-                // MARK: Quit
-                Button("Quit wthrr") {
-                    NSApplication.shared.terminate(nil)
+                // MARK: Quit + Splash
+                HStack(spacing: 8) {
+                    Button("Quit wthrr") {
+                        NSApplication.shared.terminate(nil)
+                    }
+                    .keyboardShortcut("q")
+
+                    Button {
+                        AppDelegate.shared?.showSplashScreen(manual: true)
+                    } label: {
+                        Label("Splash", systemImage: "sparkles")
+                    }
                 }
-                .keyboardShortcut("q")
                 .padding(.bottom, 8)
 
                 Divider()

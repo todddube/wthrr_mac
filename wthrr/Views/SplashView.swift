@@ -69,13 +69,13 @@ struct SplashView: View {
             WeatherView()
                 .environment(settings)
                 .environment(ScreenGeometry())
-                .opacity(0.4)
+                .opacity(0.5)
 
             // Gradient overlay for readability
             LinearGradient(
                 colors: [
                     Color.black.opacity(0.7),
-                    Color.black.opacity(0.3),
+                    Color.black.opacity(0.5),
                     Color.black.opacity(0.7)
                 ],
                 startPoint: .top,
