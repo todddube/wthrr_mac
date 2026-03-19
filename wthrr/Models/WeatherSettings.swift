@@ -86,12 +86,6 @@ class WeatherSettings {
         didSet { UserDefaults.standard.set(lightningEnabled, forKey: "lightningEnabled") }
     }
 
-    /// When true the overlay windows are raised above the Dock so weather effects
-    /// appear on top of it. When false (default) the overlay sits below the Dock.
-    var showOverDock: Bool {
-        didSet { UserDefaults.standard.set(showOverDock, forKey: "showOverDock") }
-    }
-
     // MARK: Clouds
 
     /// When true, translucent clouds drift across the top of the screen.
@@ -150,10 +144,6 @@ class WeatherSettings {
 
         lightningEnabled = UserDefaults.standard.object(forKey: "lightningEnabled") != nil
             ? UserDefaults.standard.bool(forKey: "lightningEnabled")
-            : false
-
-        showOverDock = UserDefaults.standard.object(forKey: "showOverDock") != nil
-            ? UserDefaults.standard.bool(forKey: "showOverDock")
             : false
 
         cloudsEnabled = UserDefaults.standard.object(forKey: "cloudsEnabled") != nil

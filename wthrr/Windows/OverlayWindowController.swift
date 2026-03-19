@@ -63,22 +63,6 @@ class OverlayWindowController {
         }
     }
 
-    /// Returns the appropriate window level based on the current `showOverDock` setting.
-    private var overlayWindowLevel: NSWindow.Level {
-        WeatherSettings.shared.showOverDock
-            ? .statusBar
-            : NSWindow.Level(rawValue: NSWindow.Level.normal.rawValue - 1)
-    }
-
-    /// Re-applies the current window level to all live overlay windows without
-    /// tearing them down. Called when the user toggles the "Over Dock" setting.
-    func updateWindowLevels() {
-        let level = overlayWindowLevel
-        for window in windowsByDisplay.values {
-            window.level = level
-        }
-    }
-
     /// Constructs a single borderless, transparent, non-interactive overlay window
     /// sized to exactly cover the given screen.
     private func makeOverlayWindow(for screen: NSScreen) -> NSWindow {
@@ -94,7 +78,7 @@ class OverlayWindowController {
         window.backgroundColor = .clear
         window.isOpaque = false
         window.hasShadow = false
-        window.level = overlayWindowLevel
+        window.level = NSWindow.Level(rawValue: NSWindow.Level.normal.rawValue - 1)
         window.ignoresMouseEvents = true
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         window.hidesOnDeactivate = false

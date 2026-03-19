@@ -205,32 +205,6 @@ struct ContentView: View {
                         }
                     }
 
-                    // Display layer
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle(isOn: $settings.showOverDock) {
-                            HStack {
-                                Text("Over Dock")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(settings.showOverDock ? "On" : "Off")
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                        .onChange(of: settings.showOverDock) { _, _ in
-                            AppDelegate.shared?.overlayWindowController?.updateWindowLevels()
-                        }
-
-                        if settings.showOverDock {
-                            Text("Weather overlay appears on top of the Dock")
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-
                     // Display selection
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Displays")
