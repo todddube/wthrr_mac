@@ -5,7 +5,6 @@
 // GitHub: https://github.com/todddube/wthrr_mac
 
 import SwiftUI
-import Combine
 import QuartzCore
 
 // MARK: - Weather animation model
@@ -14,13 +13,13 @@ import QuartzCore
 /// height map and rain effects. The baseline is always the true screen bottom
 /// (screenSize.height); snow piles upward from there. The Dock sits above our
 /// window level and naturally occludes whatever is behind it.
+@Observable
 @MainActor
-class WeatherAnimationModel: ObservableObject {
+final class WeatherAnimationModel {
     private(set) var particles: [Particle] = []
     private var screenSize: CGSize = .zero
     private let wind = WindModel()
 
-    private var timer: Timer?
     private var lastTime: CFTimeInterval = 0
 
     private var builtCount = 0
@@ -28,11 +27,11 @@ class WeatherAnimationModel: ObservableObject {
     private var builtSpeed: Double = 0
     private var builtWeatherType: WeatherType?
 
-    /// Incremented every frame so the Canvas knows to redraw.
-    @Published var tick: Int = 0
+    /// Internal frame counter for periodic operations (smoothing, melting).
+    private var frameCount: Int = 0
 
     /// Current wind velocity exposed for Canvas rain-angle rendering (pts/s).
-    @Published var currentWindVelocity: CGFloat = 0
+    private(set) var currentWindVelocity: CGFloat = 0
 
     // MARK: Rain effects
 
@@ -79,6 +78,17 @@ class WeatherAnimationModel: ObservableObject {
     /// Frame counter for glitch teleport checks.
     private var glitchFrame: Int = 0
 
+    // MARK: Clouds
+
+    /// Active clouds drifting across the top of the screen.
+    private(set) var clouds: [Cloud] = []
+
+    /// Whether clouds were enabled last frame (to detect toggle changes).
+    private var builtCloudsEnabled: Bool = false
+
+    /// Cloud size multiplier last used to build the cloud population.
+    private var builtCloudSize: Double = 0
+
     // MARK: Accumulation
 
     /// Column width in points for the height-map grid.
@@ -92,29 +102,17 @@ class WeatherAnimationModel: ObservableObject {
 
     private var lastScreenSize: CGSize = .zero
 
-    // MARK: Timer
-
-    /// Starts the ~60 fps animation timer. Safe to call multiple times.
-    func start() {
-        guard timer == nil else { return }
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.advance() }
-        }
-        RunLoop.main.add(timer!, forMode: .common)
-    }
-
-    /// Stops the animation timer and releases the scheduled timer.
-    func stop() {
-        timer?.invalidate()
-        timer = nil
-    }
-
     // MARK: Configuration
 
     /// Rebuilds the particle array if key parameters changed since the last build.
     /// Detects changes to count, seed, speed, screen size, and weather type.
     func configure(size: CGSize, settings: WeatherSettings) {
         guard size != .zero else { return }
+
+        // Clouds are independent of the particle system — always check
+        screenSize = screenSize == .zero ? size : screenSize
+        configureClouds(settings: settings)
+
         let needsRebuild = particles.isEmpty
             || size != screenSize
             || settings.flakeCount      != builtCount
@@ -218,7 +216,8 @@ class WeatherAnimationModel: ObservableObject {
 
     /// Advances all particle positions by one frame.
     /// Handles snow accumulation, rain splashes, and puddle growth depending on settings.
-    private func advance() {
+    /// Called each frame by the TimelineView-driven Canvas.
+    func advance() {
         let now = CACurrentMediaTime()
         let dt: CGFloat = lastTime == 0 ? 1.0 / 60.0 : CGFloat(min(now - lastTime, 1.0 / 20.0))
         lastTime = now
@@ -271,10 +270,12 @@ class WeatherAnimationModel: ObservableObject {
             advanceAIStormEffects(dt: dt)
         }
 
-        if !isRain && settings.weatherType != .aiStorm && accumulating && tick % 30 == 0 { smoothAccumulation() }
-        if !isRain && settings.weatherType != .aiStorm && accumulating && tick % 4 == 0 { meltExcessSnow(maxAccumH: maxAccumH) }
+        if !isRain && settings.weatherType != .aiStorm && accumulating && frameCount % 30 == 0 { smoothAccumulation() }
+        if !isRain && settings.weatherType != .aiStorm && accumulating && frameCount % 4 == 0 { meltExcessSnow(maxAccumH: maxAccumH) }
 
-        tick &+= 1
+        advanceClouds(dt: dt)
+
+        frameCount &+= 1
     }
 
     // MARK: Rain physics
@@ -766,6 +767,62 @@ class WeatherAnimationModel: ObservableObject {
             lifetime: CGFloat.random(in: 0.30...0.45),
             flashOpacity: 0.3
         )
+    }
+
+    // MARK: Cloud management
+
+    /// Builds or tears down the cloud population based on the clouds-enabled setting.
+    private func configureClouds(settings: WeatherSettings) {
+        guard screenSize != .zero else { return }
+
+        if !settings.cloudsEnabled {
+            if !clouds.isEmpty { clouds.removeAll() }
+            builtCloudsEnabled = false
+            return
+        }
+
+        let needsRebuild = !builtCloudsEnabled
+            || clouds.isEmpty
+            || settings.cloudSize != builtCloudSize
+
+        guard needsRebuild else { return }
+        builtCloudsEnabled = true
+        builtCloudSize = settings.cloudSize
+
+        var rng = SeededRNG(seed: UInt64(bitPattern: Int64(settings.randomSeed &+ 7777)))
+        let count = Int.random(in: 3...CloudFactory.maxClouds)
+        clouds = (0..<count).map { _ in
+            CloudFactory.makeCloud(
+                screenWidth: screenSize.width,
+                sizeMultiplier: settings.cloudSize,
+                startOffScreen: false,
+                rng: &rng
+            )
+        }
+    }
+
+    /// Moves clouds rightward each frame and recycles ones that drift off-screen.
+    private func advanceClouds(dt: CGFloat) {
+        guard !clouds.isEmpty else { return }
+        let settings = WeatherSettings.shared
+        guard settings.cloudsEnabled else { return }
+
+        for i in clouds.indices {
+            clouds[i].x += clouds[i].speed * dt
+        }
+
+        // Recycle clouds that have fully exited the right edge
+        for i in clouds.indices {
+            if clouds[i].x - clouds[i].width / 2 > screenSize.width {
+                var rng = SeededRNG(seed: UInt64(CACurrentMediaTime().bitPattern) &+ UInt64(i))
+                clouds[i] = CloudFactory.makeCloud(
+                    screenWidth: screenSize.width,
+                    sizeMultiplier: settings.cloudSize,
+                    startOffScreen: true,
+                    rng: &rng
+                )
+            }
+        }
     }
 
     // MARK: Factory

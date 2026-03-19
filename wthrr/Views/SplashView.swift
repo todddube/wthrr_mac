@@ -211,27 +211,14 @@ struct SplashView: View {
             withAnimation(.easeOut(duration: 0.5)) {
                 appeared = true
             }
-            startCountdown()
-
-            // Show menu bar hint after a short delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                withAnimation(.easeOut(duration: 0.5)) {
-                    showMenuBarHint = true
-                }
-            }
         }
-    }
-
-    /// Counts down from 20 seconds and fires `onDismiss` when reaching zero.
-    private func startCountdown() {
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
-            MainActor.assumeIsolated {
+        .task {
+            // Auto-dismiss countdown
+            while secondsRemaining > 0 {
+                try? await Task.sleep(for: .seconds(1))
                 secondsRemaining -= 1
-                if secondsRemaining <= 0 {
-                    timer.invalidate()
-                    onDismiss()
-                }
             }
+            onDismiss()
         }
     }
 }

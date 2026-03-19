@@ -92,6 +92,18 @@ class WeatherSettings {
         didSet { UserDefaults.standard.set(showOverDock, forKey: "showOverDock") }
     }
 
+    // MARK: Clouds
+
+    /// When true, translucent clouds drift across the top of the screen.
+    var cloudsEnabled: Bool {
+        didSet { UserDefaults.standard.set(cloudsEnabled, forKey: "cloudsEnabled") }
+    }
+
+    /// Multiplier for cloud size. Range: 0.5 (small) - 1.5 (large, capped internally).
+    var cloudSize: Double {
+        didSet { UserDefaults.standard.set(cloudSize, forKey: "cloudSize") }
+    }
+
     // MARK: Display selection
 
     /// Whether to show weather on all displays or only the manually selected ones.
@@ -143,6 +155,13 @@ class WeatherSettings {
         showOverDock = UserDefaults.standard.object(forKey: "showOverDock") != nil
             ? UserDefaults.standard.bool(forKey: "showOverDock")
             : false
+
+        cloudsEnabled = UserDefaults.standard.object(forKey: "cloudsEnabled") != nil
+            ? UserDefaults.standard.bool(forKey: "cloudsEnabled")
+            : false
+
+        let savedCloudSize = UserDefaults.standard.double(forKey: "cloudSize")
+        cloudSize = savedCloudSize > 0 ? savedCloudSize : 1.0
 
         let savedMode = UserDefaults.standard.string(forKey: "displayMode") ?? ""
         displayMode = DisplayMode(rawValue: savedMode) ?? .all
@@ -232,6 +251,15 @@ class WeatherSettings {
         case .rain:    return "Re-randomise Drops"
         case .aiStorm: return "Re-randomise Glitches"
         case .snow:    return "Re-randomise Flakes"
+        }
+    }
+
+    /// Human-readable label for the current cloud size setting.
+    var cloudSizeLabel: String {
+        switch cloudSize {
+        case ..<0.7:  return "Small"
+        case ..<1.1:  return "Medium"
+        default:      return "Large"
         }
     }
 

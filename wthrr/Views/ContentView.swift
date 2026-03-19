@@ -104,6 +104,40 @@ struct ContentView: View {
                         Slider(value: $settings.windStrength, in: 0.0...1.0, step: 0.05)
                     }
 
+                    // Clouds toggle + size
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle(isOn: $settings.cloudsEnabled) {
+                            HStack {
+                                Text("Clouds")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(settings.cloudsEnabled ? "On" : "Off")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+
+                        if settings.cloudsEnabled {
+                            Text("Translucent clouds drift across the top of the screen")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+
+                            HStack {
+                                Text("Cloud Size")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(settings.cloudSizeLabel)
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                            Slider(value: $settings.cloudSize, in: 0.5...1.5, step: 0.1)
+                        }
+                    }
+
                     // Accumulation / Puddles toggle
                     VStack(alignment: .leading, spacing: 4) {
                         Toggle(isOn: $settings.accumulationEnabled) {

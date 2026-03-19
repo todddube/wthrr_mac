@@ -165,7 +165,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Creates and displays a centred splash window with live weather animation.
     /// The window auto-dismisses after 20 seconds or when the user clicks close.
     private func showSplashScreen() {
-        let window = NSWindow(
+        let window = KeyableBorderlessWindow(
             contentRect: NSRect(x: 0, y: 0, width: 380, height: 540),
             styleMask: [.borderless],
             backing: .buffered,
@@ -217,6 +217,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private static var sigTermKey = 0
+}
+
+// MARK: - Keyable borderless window
+
+/// A borderless NSWindow subclass that can become the key window.
+/// Used for the splash screen so `makeKeyAndOrderFront` works without warnings.
+private class KeyableBorderlessWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
 }
 
 // MARK: - Notification name

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**wthrr** is a macOS menu bar app that renders animated weather overlays (snow and rain) across all connected displays. It has no live weather data — the effects are purely decorative and user-configurable.
+**wthrr** is a macOS menu bar app that renders animated weather overlays (snow, rain, and AI storm) across all connected displays. It has no live weather data — the effects are purely decorative and user-configurable.
 
 ## Build & Test
 
@@ -19,7 +19,7 @@ There is no command-line build script — all builds go through Xcode.
 
 ## Architecture
 
-The app uses a modular folder structure with clear separation between snow and rain modules:
+The app uses a modular folder structure with clear separation between weather modules:
 
 ```
 wthrr/
@@ -27,8 +27,9 @@ wthrr/
 ├── Models/         WeatherSettings, Particle, ScreenGeometry — shared data
 ├── Snow/           SnowParticle (shapes + factory), SnowRenderer (drawing)
 ├── Rain/           RainParticle (splash/puddle + factory), RainRenderer (drawing)
-├── Animation/      WeatherAnimationModel — 60 fps physics engine
-├── Views/          WeatherView (Canvas), ContentView (menu bar popover)
+├── AIStorm/        AIStormParticle (glitch types + factory), AIStormRenderer (neon effects)
+├── Animation/      WeatherAnimationModel — display-synced physics engine
+├── Views/          WeatherView (TimelineView + Canvas), ContentView (menu bar popover), SplashView
 ├── Windows/        OverlayWindowController — per-display overlay windows
 └── Assets.xcassets
 ```
@@ -43,10 +44,10 @@ Shown inside a `MenuBarExtra`. Lets the user adjust particle count, speed, wind,
 Manages one borderless `NSWindow` per active display. Windows sit just below normal window level, are fully transparent and ignore mouse events. Rebuilds windows on `NSApplication.didChangeScreenParametersNotification`.
 
 ### Weather animation — `WeatherView` + `WeatherAnimationModel`
-- `WeatherAnimationModel` (`@MainActor ObservableObject`) drives a ~60 fps `Timer` scheduled on `RunLoop.main`. Each tick calls `advance()` via `MainActor.assumeIsolated { }`.
+- `WeatherAnimationModel` (`@Observable @MainActor`) advances particle physics each frame. Driven by `TimelineView(.animation)` which syncs redraws to the display refresh rate.
 - `WindModel` simulates gusting wind with smoothed velocity transitions.
 - `SeededRNG` (xorshift64) produces deterministic per-particle randomness.
-- `WeatherView` renders with SwiftUI `Canvas`, delegating to `SnowRenderer` or `RainRenderer`.
+- `WeatherView` uses `TimelineView(.animation)` + `Canvas`, delegating to `SnowRenderer`, `RainRenderer`, or `AIStormRenderer`.
 
 ### Snow module — `Snow/`
 - `SnowShape` enum defines crystal types (dot, star, dendrite).
@@ -58,15 +59,21 @@ Manages one borderless `NSWindow` per active display. Windows sit just below nor
 - `RainParticleFactory` creates thin, fast-falling rain streaks.
 - `RainRenderer` draws wind-tilted streaks, expanding splashes, and puddles with shine/ripples.
 
+### AI Storm module — `AIStorm/`
+- `ScanLine`, `DataBolt`, `CorruptionPatch`, `AlienShip`, `ScreenFracture` value types model digital glitch effects.
+- `AIStormParticleFactory` creates neon glitch particles with erratic movement.
+- `AIStormRenderer` draws glitch particles, scan lines, data bolts, corruption patches, alien ships, and screen fractures.
+
 ### Key data flow
 ```
 WeatherSettings.shared
     ├── ContentView (menu bar popover) — reads/writes settings
     └── OverlayWindowController
             └── per-display NSWindow
-                    └── WeatherView (Canvas) + WeatherAnimationModel
+                    └── WeatherView (TimelineView + Canvas) + WeatherAnimationModel
                             ├── SnowRenderer + SnowParticleFactory
-                            └── RainRenderer + RainParticleFactory
+                            ├── RainRenderer + RainParticleFactory
+                            └── AIStormRenderer + AIStormParticleFactory
 ```
 
 ## Versioning
