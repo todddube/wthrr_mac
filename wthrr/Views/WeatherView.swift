@@ -19,15 +19,18 @@ struct WeatherView: View {
     @State private var model = WeatherAnimationModel()
 
     var body: some View {
-        TimelineView(.animation) { _ in
+        TimelineView(.animation) { timeline in
             Canvas { context, size in
+                // Configure and advance are driven by the timeline date change,
+                // not inside the Canvas closure, to avoid double-advances if
+                // Canvas evaluates its body more than once per frame.
                 model.configure(size: size, settings: settings)
-                model.advance()
+                model.advance(settings: settings)
 
                 let isDark = colorScheme == .dark
 
                 // Draw clouds behind particles
-                if settings.cloudsEnabled {
+                if settings.cloudsEnabled || settings.weatherType == .thunderstorm {
                     CloudRenderer.draw(
                         context: context,
                         size: size,
@@ -37,25 +40,21 @@ struct WeatherView: View {
                     )
                 }
 
-                let pOpacity = settings.particleOpacity
+                let pOpacity = settings.particleOpacity * settings.timeDimFactor
                 switch settings.weatherType {
                 case .rain:
                     RainRenderer.draw(
-                        context: context,
-                        size: size,
-                        isDark: isDark,
+                        context: context, size: size, isDark: isDark,
                         particles: model.particles,
-                        splashes: model.splashes,
-                        puddles: model.puddles,
+                        splashes: model.splashes, puddles: model.puddles,
                         windVelocity: model.currentWindVelocity,
                         bolt: model.activeBolt,
-                        particleOpacity: pOpacity
+                        particleOpacity: pOpacity,
+                        tintHue: settings.rainTintHue
                     )
                 case .aiStorm:
                     AIStormRenderer.draw(
-                        context: context,
-                        size: size,
-                        isDark: isDark,
+                        context: context, size: size, isDark: isDark,
                         particles: model.particles,
                         scanLines: model.scanLines,
                         dataBolts: model.dataBolts,
@@ -64,17 +63,34 @@ struct WeatherView: View {
                         screenFractures: model.screenFractures,
                         particleOpacity: pOpacity
                     )
+                case .thunderstorm:
+                    RainRenderer.draw(
+                        context: context, size: size, isDark: isDark,
+                        particles: model.particles,
+                        splashes: model.splashes, puddles: model.puddles,
+                        windVelocity: model.currentWindVelocity,
+                        bolt: model.activeBolt,
+                        particleOpacity: pOpacity,
+                        tintHue: settings.rainTintHue
+                    )
+                case .fog:
+                    FogRenderer.draw(
+                        context: context, size: size, isDark: isDark,
+                        particles: model.particles,
+                        fogBands: model.fogBands,
+                        particleOpacity: pOpacity,
+                        tintHue: settings.fogTintHue
+                    )
                 case .snow:
                     SnowRenderer.draw(
-                        context: context,
-                        size: size,
-                        isDark: isDark,
+                        context: context, size: size, isDark: isDark,
                         particles: model.particles,
                         accumulationMap: model.accumulationMap,
                         baselineMap: model.baselineMap,
                         accumulationEnabled: settings.accumulationEnabled,
                         columnWidth: model.columnWidth,
-                        particleOpacity: pOpacity
+                        particleOpacity: pOpacity,
+                        tintHue: settings.snowTintHue
                     )
                 }
             }
@@ -90,6 +106,7 @@ struct WeatherView: View {
             model.clearAccumulation()
             model.clearRainEffects()
             model.clearAIStormEffects()
+            model.clearFogEffects()
         }
     }
 }

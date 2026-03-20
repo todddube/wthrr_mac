@@ -9,392 +9,145 @@ import SwiftUI
 // MARK: - Content view
 
 /// Root view shown inside the `MenuBarExtra` popover.
-/// Provides the weather summary header, all simulation controls (amount, speed,
-/// wind, display selection), a re-randomise button, quit button, and the about footer.
-/// A semi-transparent `WeatherView` floats behind all controls as a visual flourish.
 struct ContentView: View {
     @Environment(WeatherSettings.self) private var settings
     @State private var screens: [NSScreen] = NSScreen.screens
+    @State private var showSavePreset = false
+    @State private var newPresetName = ""
+    @State private var isRecordingHotkey = false
+    @State private var pendingHotkey: HotkeyBinding?
     private var liveWeather: LiveWeatherService { LiveWeatherService.shared }
+    private var presetStore: PresetStore { PresetStore.shared }
+
+    // Persisted section expand/collapse state
+    @AppStorage("section.presets")     private var presetsExpanded = false
+    @AppStorage("section.particles")   private var particlesExpanded = true
+    @AppStorage("section.wind")        private var windExpanded = false
+    @AppStorage("section.atmosphere")  private var atmosphereExpanded = false
+    @AppStorage("section.displays")    private var displaysExpanded = false
+    @AppStorage("section.colors")      private var colorsExpanded = false
+    @AppStorage("section.performance") private var performanceExpanded = false
 
     var body: some View {
         @Bindable var settings = settings
 
-        ZStack {
-            // Animated weather background — floats behind all controls.
-            WeatherView()
-                .environment(settings)
-                .environment(ScreenGeometry())
-                .opacity(0.35)
-                .allowsHitTesting(false)
-
+        ScrollView {
             VStack(spacing: 0) {
 
-                // MARK: Weather summary
-                VStack(spacing: 8) {
-                    Image(systemName: settings.weatherIcon)
-                        .font(.system(size: 44))
-                        .symbolRenderingMode(.multicolor)
+                // ── Header ──────────────────────────────────
+                headerSection
+                    .padding(.top, 16)
+                    .padding(.horizontal, 16)
 
-                    Text(settings.temperatureText)
-                        .font(.system(size: 34, weight: .light, design: .rounded))
+                // Pause + shortcut
+                pauseRow
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
 
-                    Text(settings.weatherLabel)
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top, 16)
-                .padding(.horizontal, 16)
+                Divider().padding(.vertical, 10)
 
-                Divider()
-                    .padding(.vertical, 12)
+                // ── Always-visible controls ─────────────────
+                VStack(spacing: 12) {
+                    liveWeatherSection
 
-                // MARK: Settings
-                VStack(spacing: 16) {
-
-                    // Live weather toggle
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle(isOn: $settings.liveWeatherEnabled) {
-                            HStack {
-                                Text("Live Weather")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(settings.liveWeatherEnabled ? "Auto" : "Manual")
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                        .onChange(of: settings.liveWeatherEnabled) { _, enabled in
-                            if enabled { liveWeather.start() } else { liveWeather.stop() }
-                        }
-
-                        if settings.liveWeatherEnabled {
-                            HStack(spacing: 6) {
-                                if liveWeather.isLoading {
-                                    ProgressView().controlSize(.mini)
-                                } else if let err = liveWeather.errorMessage {
-                                    Image(systemName: "exclamationmark.triangle")
-                                        .font(.caption2)
-                                        .foregroundStyle(.orange)
-                                    Text(err)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                } else if !liveWeather.locationName.isEmpty {
-                                    Image(systemName: "location.fill")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                    Text(liveWeather.locationName)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Button {
-                                    liveWeather.refresh()
-                                } label: {
-                                    Image(systemName: "arrow.clockwise")
-                                        .font(.caption2)
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(.secondary)
-                                .disabled(liveWeather.isLoading)
-                            }
-                            Text("Type and intensity are set automatically")
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-
-                    // Weather type picker
-                    Picker("Weather", selection: $settings.weatherType) {
+                    Picker(selection: $settings.weatherType) {
                         Text("Snow").tag(WeatherType.snow)
                         Text("Rain").tag(WeatherType.rain)
-                        Text("AI Storm").tag(WeatherType.aiStorm)
+                        Text("Storm").tag(WeatherType.thunderstorm)
+                        Text("Fog").tag(WeatherType.fog)
+                        Text("AI").tag(WeatherType.aiStorm)
+                    } label: {
+                        EmptyView()
                     }
                     .pickerStyle(.segmented)
                     .disabled(settings.liveWeatherEnabled)
 
-                    // Particle count
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text("Amount")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text("\(settings.flakeCount) \(settings.particleUnit)")
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                        }
-                        Slider(value: Binding(
-                            get: { Double(settings.flakeCount) },
-                            set: { settings.flakeCount = Int($0) }
-                        ), in: 20...400, step: 10)
-                    }
-                    .disabled(settings.liveWeatherEnabled)
-
-                    // Fall speed
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text("Speed")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(speedLabelForType(settings.weatherType, settings.speedMultiplier))
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                        }
-                        Slider(value: $settings.speedMultiplier, in: 0.25...3.0, step: 0.05)
-                    }
-                    .disabled(settings.liveWeatherEnabled)
-
-                    // Particle opacity
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text("Opacity")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(settings.particleOpacityLabel)
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                        }
-                        Slider(value: $settings.particleOpacity, in: 0.2...1.5, step: 0.05)
-                    }
-
-                    // Wind strength + direction
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text("Wind")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(windLabel(settings.windStrength))
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                        }
-                        Slider(value: $settings.windStrength, in: 0.0...1.0, step: 0.05)
-
-                        if settings.windStrength > 0 {
-                            Picker("Direction", selection: $settings.windDirection) {
-                                Text("← Left").tag(WindDirection.left)
-                                Text("Natural").tag(WindDirection.natural)
-                                Text("Right →").tag(WindDirection.right)
-                            }
-                            .pickerStyle(.segmented)
-                            .font(.caption)
-                        }
-                    }
-                    .disabled(settings.liveWeatherEnabled)
-
-                    // Clouds toggle + size
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle(isOn: $settings.cloudsEnabled) {
-                            HStack {
-                                Text("Clouds")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(settings.cloudsEnabled ? "On" : "Off")
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-
-                        if settings.cloudsEnabled {
-                            Text("Translucent clouds drift across the top of the screen")
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-
-                            HStack {
-                                Text("Cloud Size")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(settings.cloudSizeLabel)
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
-                            Slider(value: $settings.cloudSize, in: 0.5...1.5, step: 0.1)
-
-                            HStack {
-                                Text("Cloud Speed")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(settings.cloudSpeedLabel)
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
-                            Slider(value: $settings.cloudSpeed, in: 0.25...3.0, step: 0.05)
-                        }
-                    }
-
-                    // Accumulation / Puddles toggle
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle(isOn: $settings.accumulationEnabled) {
-                            HStack {
-                                Text(settings.accumulationLabel)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(settings.accumulationEnabled ? "On" : "Off")
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-
-                        if settings.accumulationEnabled {
-                            Text(settings.accumulationDescription)
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-
-                    // Lightning toggle (rain-only)
-                    if settings.weatherType == .rain {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Toggle(isOn: $settings.lightningEnabled) {
-                                HStack {
-                                    Text("Lightning")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    Spacer()
-                                    Text(settings.lightningEnabled ? "On" : "Off")
-                                        .font(.caption.monospacedDigit())
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .toggleStyle(.switch)
-                            .controlSize(.small)
-
-                            if settings.lightningEnabled {
-                                Text("Random bolts flash across the screen")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-
-                                HStack {
-                                    Text("Frequency")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                    Spacer()
-                                    Text(settings.lightningFrequencyLabel)
-                                        .font(.caption.monospacedDigit())
-                                        .foregroundStyle(.secondary)
-                                }
-                                Slider(value: $settings.lightningFrequency, in: 0.25...3.0, step: 0.05)
-                            }
-                        }
-                    }
-
-                    // Drift depth (snow-only, visible when accumulation is on)
-                    if settings.weatherType == .snow && settings.accumulationEnabled {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text("Drift Depth")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(settings.driftDepthLabel)
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
-                            Slider(value: Binding(
-                                get: { Double(settings.maxAccumulationHeight) },
-                                set: { settings.maxAccumulationHeight = Int($0) }
-                            ), in: 20...300, step: 10)
-                        }
-                    }
-
-                    // Low Power mode
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle(isOn: $settings.lowPowerMode) {
-                            HStack {
-                                Text("Low Power")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(settings.lowPowerMode ? "On" : "Off")
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-
-                        if settings.lowPowerMode {
-                            Text("Limits animation to ~30 fps to reduce CPU usage")
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-
-                    // Display selection
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Displays")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        Picker("", selection: $settings.displayMode) {
-                            Text("All Displays").tag(DisplayMode.all)
-                            Text("Choose...").tag(DisplayMode.selected)
-                        }
-                        .pickerStyle(.segmented)
-                        .onChange(of: settings.displayMode) { _, _ in
-                            applyDisplaySettings()
-                        }
-
-                        if settings.displayMode == .selected {
-                            VStack(alignment: .leading, spacing: 6) {
-                                ForEach(screens, id: \.displayID) { screen in
-                                    let isOn = settings.selectedDisplayIDs.contains(screen.displayID)
-                                    Button {
-                                        settings.toggleDisplay(screen)
-                                        applyDisplaySettings()
-                                    } label: {
-                                        HStack(spacing: 8) {
-                                            Image(systemName: isOn ? "checkmark.square.fill" : "square")
-                                                .foregroundStyle(isOn ? .blue : .secondary)
-                                            Text(screen.localizedName)
-                                                .font(.caption)
-                                        }
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-
-                                if screens.isEmpty {
-                                    Text("No screens detected")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .padding(.leading, 4)
-                        }
-                    }
-
-                    // Re-randomise
-                    Button {
-                        settings.reroll()
-                    } label: {
-                        Label(settings.rerollLabel, systemImage: "shuffle")
-                            .font(.body.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.regular)
+                    intensityQuickTaps
                 }
                 .padding(.horizontal, 16)
 
-                Divider()
-                    .padding(.vertical, 12)
+                Divider().padding(.vertical, 10)
 
-                // MARK: Quit + Splash
+                // ── Collapsible sections ────────────────────
+                VStack(spacing: 0) {
+                    // Presets
+                    SettingsSection("Presets", icon: "star.fill",
+                                    isExpanded: $presetsExpanded) {
+                        presetsContent
+                    }
+
+                    sectionDivider
+
+                    // Particles
+                    SettingsSection("Particles", icon: "circle.dotted",
+                                    isExpanded: $particlesExpanded) {
+                        particlesContent
+                    }
+
+                    sectionDivider
+
+                    // Wind
+                    SettingsSection("Wind", icon: "wind",
+                                    isExpanded: $windExpanded,
+                                    badge: windBadge) {
+                        windContent
+                    }
+
+                    sectionDivider
+
+                    // Atmosphere
+                    SettingsSection("Atmosphere", icon: "cloud.fill",
+                                    isExpanded: $atmosphereExpanded,
+                                    badge: atmosphereBadge) {
+                        atmosphereContent
+                    }
+
+                    sectionDivider
+
+                    // Colors
+                    SettingsSection("Colors", icon: "paintpalette.fill",
+                                    isExpanded: $colorsExpanded,
+                                    badge: colorsBadge) {
+                        colorsContent
+                    }
+
+                    sectionDivider
+
+                    // Displays
+                    SettingsSection("Displays", icon: "display",
+                                    isExpanded: $displaysExpanded,
+                                    badge: displaysBadge) {
+                        displaysContent
+                    }
+
+                    sectionDivider
+
+                    // Behavior & Performance
+                    SettingsSection("Behavior", icon: "gearshape",
+                                    isExpanded: $performanceExpanded,
+                                    badge: behaviorBadge) {
+                        behaviorContent
+                    }
+                }
+                .padding(.horizontal, 16)
+
+                Divider().padding(.vertical, 10)
+
+                // ── Actions ─────────────────────────────────
+                Button {
+                    settings.reroll()
+                } label: {
+                    Label(settings.rerollLabel, systemImage: "shuffle")
+                        .font(.body.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.regular)
+                .padding(.horizontal, 16)
+
+                Divider().padding(.vertical, 10)
+
+                // ── Footer ──────────────────────────────────
                 HStack(spacing: 8) {
                     Button("Quit wthrr") {
                         NSApplication.shared.terminate(nil)
@@ -409,16 +162,16 @@ struct ContentView: View {
                 }
                 .padding(.bottom, 8)
 
-                Divider()
-                    .padding(.vertical, 8)
+                Divider().padding(.vertical, 6)
 
-                // MARK: About
                 AboutView()
                     .padding(.bottom, 14)
 
             } // VStack
-        } // ZStack
-        .frame(width: 260)
+        } // ScrollView
+        .frame(width: 280)
+        .frame(maxHeight: 700)
+        .background(.regularMaterial)
         .onAppear {
             screens = NSScreen.screens
             if settings.liveWeatherEnabled && !liveWeather.isRunning {
@@ -433,24 +186,660 @@ struct ContentView: View {
         }
     }
 
-    // MARK: Helpers
+    // MARK: - Thin divider between sections
 
-    /// Forwards the current display selection to `OverlayWindowController` so
-    /// overlay windows are added or removed to match the user's choice.
+    private var sectionDivider: some View {
+        Divider().padding(.vertical, 2)
+    }
+
+    // MARK: - Header
+
+    private var headerSection: some View {
+        VStack(spacing: 8) {
+            Image(systemName: settings.isPaused ? "pause.circle" : settings.weatherIcon)
+                .font(.system(size: 44))
+                .symbolRenderingMode(.multicolor)
+
+            Text(settings.temperatureText)
+                .font(.system(size: 34, weight: .light, design: .rounded))
+
+            Text(settings.isPaused ? "Paused" : settings.weatherLabel)
+                .font(.headline)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: - Pause row
+
+    private var pauseRow: some View {
+        VStack(spacing: 6) {
+            // Pause / Resume button
+            Button {
+                settings.togglePause()
+            } label: {
+                Label(settings.isPaused ? "Resume" : "Pause",
+                      systemImage: settings.isPaused ? "play.fill" : "pause.fill")
+                    .font(.caption.weight(.medium))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+
+            // Shortcut — centered below the button
+            VStack(spacing: 2) {
+                Text("Shortcut")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+
+                ShortcutBadge(
+                    binding: settings.pauseHotkey,
+                    isRecording: $isRecordingHotkey,
+                    pendingHotkey: $pendingHotkey,
+                    onAccept: {
+                        if let hotkey = pendingHotkey {
+                            settings.pauseHotkey = hotkey
+                        }
+                        pendingHotkey = nil
+                        isRecordingHotkey = false
+                    },
+                    onCancel: {
+                        pendingHotkey = nil
+                        isRecordingHotkey = false
+                    }
+                )
+            }
+        }
+    }
+
+    // MARK: - Intensity quick-taps
+
+    private var intensityQuickTaps: some View {
+        HStack(spacing: 6) {
+            ForEach(Intensity.allCases) { intensity in
+                Button {
+                    applyIntensity(intensity)
+                } label: {
+                    Text(intensity.rawValue)
+                        .font(.caption.weight(.medium))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .tint(currentIntensity == intensity ? .accentColor : nil)
+            }
+        }
+        .disabled(settings.liveWeatherEnabled)
+    }
+
+    // MARK: - Live weather section
+
+    private var liveWeatherSection: some View {
+        @Bindable var settings = settings
+        return VStack(alignment: .leading, spacing: 4) {
+            Toggle(isOn: $settings.liveWeatherEnabled) {
+                HStack {
+                    Text("Live Weather")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(settings.liveWeatherEnabled ? "Auto" : "Manual")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .onChange(of: settings.liveWeatherEnabled) { _, enabled in
+                if enabled { liveWeather.start() } else { liveWeather.stop() }
+            }
+
+            if settings.liveWeatherEnabled {
+                HStack(spacing: 6) {
+                    if liveWeather.isLoading {
+                        ProgressView().controlSize(.mini)
+                    } else if let err = liveWeather.errorMessage {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                        Text(err)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    } else if !liveWeather.locationName.isEmpty {
+                        Image(systemName: "location.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text(liveWeather.locationName)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button {
+                        liveWeather.refresh()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption2)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .disabled(liveWeather.isLoading)
+                }
+                Text("Type and intensity are set automatically")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    // MARK: - Section: Presets
+
+    private var presetsContent: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Spacer()
+                Button {
+                    newPresetName = ""
+                    showSavePreset.toggle()
+                } label: {
+                    Label("Save Current", systemImage: "plus.circle")
+                        .font(.caption2)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+
+                Menu {
+                    Button("Export Presets\u{2026}") { presetStore.exportPresets() }
+                    Button("Import Presets\u{2026}") { presetStore.importPresets() }
+                } label: {
+                    Image(systemName: "square.and.arrow.up.on.square")
+                        .font(.caption)
+                }
+                .menuStyle(.borderlessButton)
+                .frame(width: 20)
+                .foregroundStyle(.secondary)
+            }
+
+            if showSavePreset {
+                HStack(spacing: 4) {
+                    TextField("Preset name", text: $newPresetName)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.caption)
+                        .onSubmit { saveNewPreset() }
+                    Button("Save") { saveNewPreset() }
+                        .font(.caption)
+                        .disabled(newPresetName.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+
+            FlowLayout(spacing: 4) {
+                ForEach(presetStore.allPresets) { preset in
+                    PresetPill(
+                        preset: preset,
+                        onTap: { settings.apply(preset) },
+                        onDelete: preset.isBuiltIn ? nil : { presetStore.delete(named: preset.name) }
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Section: Particles
+
+    private var particlesContent: some View {
+        VStack(spacing: 10) {
+            sliderRow(label: "Amount",
+                      value: "\(settings.flakeCount) \(settings.particleUnit)") {
+                Slider(value: Binding(
+                    get: { Double(settings.flakeCount) },
+                    set: { settings.flakeCount = Int($0) }
+                ), in: 20...400, step: 10)
+            }
+            .disabled(settings.liveWeatherEnabled)
+
+            sliderRow(label: "Speed",
+                      value: speedLabelForType(settings.weatherType, settings.speedMultiplier)) {
+                Slider(value: Binding(
+                    get: { settings.speedMultiplier },
+                    set: { settings.speedMultiplier = $0 }
+                ), in: 0.25...3.0, step: 0.05)
+            }
+            .disabled(settings.liveWeatherEnabled)
+
+            sliderRow(label: "Opacity", value: settings.particleOpacityLabel) {
+                Slider(value: Binding(
+                    get: { settings.particleOpacity },
+                    set: { settings.particleOpacity = $0 }
+                ), in: 0.2...1.5, step: 0.05)
+            }
+        }
+    }
+
+    // MARK: - Section: Wind
+
+    private var windBadge: String? {
+        settings.windStrength < 0.05 ? "Calm" : windLabel(settings.windStrength)
+    }
+
+    private var windContent: some View {
+        @Bindable var settings = settings
+        return VStack(spacing: 8) {
+            sliderRow(label: "Strength", value: windLabel(settings.windStrength)) {
+                Slider(value: $settings.windStrength, in: 0.0...1.0, step: 0.05)
+            }
+
+            if settings.windStrength > 0 {
+                Picker("Direction", selection: $settings.windDirection) {
+                    Text("\u{2190} Left").tag(WindDirection.left)
+                    Text("Natural").tag(WindDirection.natural)
+                    Text("Right \u{2192}").tag(WindDirection.right)
+                }
+                .pickerStyle(.segmented)
+                .font(.caption)
+            }
+        }
+        .disabled(settings.liveWeatherEnabled)
+    }
+
+    // MARK: - Section: Atmosphere
+
+    private var atmosphereBadge: String? {
+        var parts: [String] = []
+        if settings.cloudsEnabled { parts.append("Clouds") }
+        if settings.accumulationEnabled { parts.append(settings.weatherType == .rain || settings.weatherType == .thunderstorm ? "Puddles" : "Drift") }
+        if (settings.weatherType == .rain || settings.weatherType == .thunderstorm) && settings.lightningEnabled { parts.append("Lightning") }
+        return parts.isEmpty ? nil : parts.joined(separator: " \u{00B7} ")
+    }
+
+    private var atmosphereContent: some View {
+        @Bindable var settings = settings
+        return VStack(spacing: 10) {
+            // Clouds
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle(isOn: $settings.cloudsEnabled) {
+                    HStack {
+                        Text("Clouds")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(settings.cloudsEnabled ? "On" : "Off")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .controlSize(.small)
+
+                if settings.cloudsEnabled {
+                    sliderRow(label: "Size", value: settings.cloudSizeLabel) {
+                        Slider(value: $settings.cloudSize, in: 0.5...1.5, step: 0.1)
+                    }
+                    sliderRow(label: "Speed", value: settings.cloudSpeedLabel) {
+                        Slider(value: $settings.cloudSpeed, in: 0.25...3.0, step: 0.05)
+                    }
+                }
+            }
+
+            Divider()
+
+            // Accumulation / Puddles
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle(isOn: $settings.accumulationEnabled) {
+                    HStack {
+                        Text(settings.accumulationLabel)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(settings.accumulationEnabled ? "On" : "Off")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .controlSize(.small)
+
+                if settings.accumulationEnabled {
+                    Text(settings.accumulationDescription)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+
+                // Drift depth (snow-only)
+                if settings.weatherType == .snow && settings.accumulationEnabled {
+                    sliderRow(label: "Drift Depth", value: settings.driftDepthLabel) {
+                        Slider(value: Binding(
+                            get: { Double(settings.maxAccumulationHeight) },
+                            set: { settings.maxAccumulationHeight = Int($0) }
+                        ), in: 20...300, step: 10)
+                    }
+                }
+            }
+
+            // Lightning (rain & thunderstorm)
+            if settings.weatherType == .rain || settings.weatherType == .thunderstorm {
+                Divider()
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(isOn: $settings.lightningEnabled) {
+                        HStack {
+                            Text("Lightning")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(settings.lightningEnabled ? "On" : "Off")
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+
+                    if settings.lightningEnabled {
+                        sliderRow(label: "Frequency", value: settings.lightningFrequencyLabel) {
+                            Slider(value: $settings.lightningFrequency, in: 0.25...3.0, step: 0.05)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Section: Colors
+
+    private var colorsBadge: String? {
+        let type = settings.weatherType
+        if type == .snow && settings.snowTintHue >= 0 { return "Tinted" }
+        if (type == .rain || type == .thunderstorm) && settings.rainTintHue >= 0 { return "Tinted" }
+        if type == .aiStorm && settings.aiStormPalette != 0 {
+            return ColorTheme.aiStormPaletteNames[settings.aiStormPalette]
+        }
+        if type == .fog && settings.fogTintHue >= 0 { return "Tinted" }
+        return nil
+    }
+
+    private var colorsContent: some View {
+        @Bindable var settings = settings
+        return VStack(spacing: 10) {
+            switch settings.weatherType {
+            case .snow:
+                colorSlider(label: "Snow Tint", hue: $settings.snowTintHue)
+            case .rain, .thunderstorm:
+                colorSlider(label: "Rain Tint", hue: $settings.rainTintHue)
+            case .aiStorm:
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Neon Palette")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Picker("", selection: $settings.aiStormPalette) {
+                        ForEach(0..<ColorTheme.aiStormPaletteNames.count, id: \.self) { i in
+                            Text(ColorTheme.aiStormPaletteNames[i]).tag(i)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+            case .fog:
+                colorSlider(label: "Fog Tint", hue: $settings.fogTintHue)
+            }
+        }
+    }
+
+    /// A hue slider with a "Default" reset button. Value of -1 means default.
+    private func colorSlider(label: String, hue: Binding<Double>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if hue.wrappedValue >= 0 {
+                    Button("Reset") { hue.wrappedValue = -1 }
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Default")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            // Color preview + slider
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(hue.wrappedValue >= 0
+                          ? Color(hue: hue.wrappedValue, saturation: 0.6, brightness: 0.9)
+                          : Color.white.opacity(0.5))
+                    .frame(width: 20, height: 20)
+                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(.quaternary, lineWidth: 1))
+
+                Slider(value: Binding(
+                    get: { hue.wrappedValue < 0 ? 0.55 : hue.wrappedValue },
+                    set: { hue.wrappedValue = $0 }
+                ), in: 0...1, step: 0.01)
+            }
+        }
+    }
+
+    // MARK: - Section: Displays
+
+    private var displaysBadge: String? {
+        settings.displayMode == .all ? "All" : "\(settings.selectedDisplayIDs.count) selected"
+    }
+
+    private var displaysContent: some View {
+        @Bindable var settings = settings
+        return VStack(alignment: .leading, spacing: 8) {
+            Picker("", selection: $settings.displayMode) {
+                Text("All Displays").tag(DisplayMode.all)
+                Text("Choose...").tag(DisplayMode.selected)
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: settings.displayMode) { _, _ in
+                applyDisplaySettings()
+            }
+
+            if settings.displayMode == .selected {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(screens, id: \.displayID) { screen in
+                        let isOn = settings.selectedDisplayIDs.contains(screen.displayID)
+                        Button {
+                            settings.toggleDisplay(screen)
+                            applyDisplaySettings()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: isOn ? "checkmark.square.fill" : "square")
+                                    .foregroundStyle(isOn ? .blue : .secondary)
+                                Text(screen.localizedName)
+                                    .font(.caption)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    if screens.isEmpty {
+                        Text("No screens detected")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.leading, 4)
+            }
+        }
+    }
+
+    // MARK: - Section: Behavior & Performance
+
+    private var behaviorBadge: String? {
+        var parts: [String] = []
+        if settings.seasonalEnabled { parts.append("Seasonal") }
+        if settings.timeDimmingEnabled { parts.append("Night Dim") }
+        if settings.lowPowerMode { parts.append("Low Power") }
+        return parts.isEmpty ? nil : parts.joined(separator: " \u{00B7} ")
+    }
+
+    private var behaviorContent: some View {
+        @Bindable var settings = settings
+        return VStack(spacing: 10) {
+            // Seasonal auto-switch
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle(isOn: $settings.seasonalEnabled) {
+                    HStack {
+                        Text("Seasonal Weather")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(settings.seasonalEnabled ? "On" : "Off")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .onChange(of: settings.seasonalEnabled) { _, enabled in
+                    if enabled { settings.applySeasonalWeather() }
+                }
+
+                if settings.seasonalEnabled {
+                    Text("Auto-switches weather type with the seasons")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            // Time-of-day dimming
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle(isOn: $settings.timeDimmingEnabled) {
+                    HStack {
+                        Text("Night Dimming")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(settings.timeDimmingEnabled ? "On" : "Off")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .onChange(of: settings.timeDimmingEnabled) { _, _ in
+                    settings.updateTimeDimming()
+                }
+
+                if settings.timeDimmingEnabled {
+                    Text("Subtly dims effects at night (10pm\u{2013}5am)")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            Divider()
+
+            // Low Power mode
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle(isOn: $settings.lowPowerMode) {
+                    HStack {
+                        Text("Low Power Mode")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(settings.lowPowerMode ? "On" : "Off")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .controlSize(.small)
+
+                if settings.lowPowerMode {
+                    Text("Limits animation to ~30 fps to reduce CPU usage")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+    }
+
+    // MARK: - Reusable components
+
+    private func sliderRow<S: View>(label: String, value: String,
+                                     @ViewBuilder slider: () -> S) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(value)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            slider()
+        }
+    }
+
+    // MARK: - Intensity
+
+    private enum Intensity: String, CaseIterable, Identifiable {
+        case light  = "Light"
+        case medium = "Medium"
+        case heavy  = "Heavy"
+        var id: String { rawValue }
+    }
+
+    private var currentIntensity: Intensity? {
+        let count = settings.flakeCount
+        let speed = settings.speedMultiplier
+        if count <= 80 && speed <= 0.65 { return .light }
+        if count >= 250 && speed >= 1.8 { return .heavy }
+        if (100...220).contains(count) && (0.8...1.4).contains(speed) { return .medium }
+        return nil
+    }
+
+    private func applyIntensity(_ intensity: Intensity) {
+        switch intensity {
+        case .light:
+            settings.flakeCount = 60
+            settings.speedMultiplier = 0.5
+            settings.windStrength = 0.15
+            settings.particleOpacity = 0.7
+        case .medium:
+            settings.flakeCount = 180
+            settings.speedMultiplier = 1.0
+            settings.windStrength = 0.5
+            settings.particleOpacity = 1.0
+        case .heavy:
+            settings.flakeCount = 350
+            settings.speedMultiplier = 2.2
+            settings.windStrength = 0.8
+            settings.particleOpacity = 1.2
+        }
+    }
+
+    // MARK: - Preset helpers
+
+    private func saveNewPreset() {
+        let name = newPresetName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        let preset = settings.snapshot(named: name)
+        presetStore.save(preset)
+        newPresetName = ""
+        showSavePreset = false
+    }
+
+    // MARK: - Helpers
+
     private func applyDisplaySettings() {
         AppDelegate.shared?.overlayWindowController?.applySettings()
     }
 
-    /// Returns the appropriate speed label for the given weather type and multiplier.
     private func speedLabelForType(_ type: WeatherType, _ v: Double) -> String {
         switch type {
-        case .rain:    return rainSpeedLabel(v)
-        case .aiStorm: return aiStormSpeedLabel(v)
-        case .snow:    return speedLabel(v)
+        case .rain:         return rainSpeedLabel(v)
+        case .thunderstorm: return rainSpeedLabel(v)
+        case .aiStorm:      return aiStormSpeedLabel(v)
+        case .fog:          return speedLabel(v)
+        case .snow:         return speedLabel(v)
         }
     }
 
-    /// Maps a speed multiplier value to a human-readable snow intensity label.
     private func speedLabel(_ v: Double) -> String {
         switch v {
         case ..<0.5:  return "Gentle"
@@ -461,7 +850,6 @@ struct ContentView: View {
         }
     }
 
-    /// Maps a speed multiplier to a rain-specific intensity label.
     private func rainSpeedLabel(_ v: Double) -> String {
         switch v {
         case ..<0.5:  return "Mist"
@@ -472,7 +860,6 @@ struct ContentView: View {
         }
     }
 
-    /// Maps a speed multiplier to an AI storm intensity label.
     private func aiStormSpeedLabel(_ v: Double) -> String {
         switch v {
         case ..<0.5:  return "Flicker"
@@ -483,7 +870,6 @@ struct ContentView: View {
         }
     }
 
-    /// Maps a wind strength value to a human-readable label.
     private func windLabel(_ v: Double) -> String {
         switch v {
         case ..<0.05: return "Calm"
@@ -496,13 +882,277 @@ struct ContentView: View {
     }
 }
 
+// MARK: - Collapsible settings section
+
+/// A styled collapsible section with icon, title, optional summary badge, and chevron.
+struct SettingsSection<Content: View>: View {
+    let title: String
+    let icon: String
+    @Binding var isExpanded: Bool
+    let badge: String?
+    @ViewBuilder let content: () -> Content
+
+    init(_ title: String, icon: String,
+         isExpanded: Binding<Bool>,
+         badge: String? = nil,
+         @ViewBuilder content: @escaping () -> Content) {
+        self.title = title
+        self.icon = icon
+        self._isExpanded = isExpanded
+        self.badge = badge
+        self.content = content
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Tappable header
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: icon)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 14)
+
+                    Text(title)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.primary)
+
+                    if let badge, !isExpanded {
+                        Text(badge)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            // Collapsible body
+            if isExpanded {
+                content()
+                    .padding(.top, 4)
+                    .padding(.bottom, 6)
+                    .padding(.leading, 20) // indent under icon
+            }
+        }
+    }
+}
+
+// MARK: - Shortcut badge
+
+/// Tappable badge showing the current hotkey. Tap to enter recording mode,
+/// press a new shortcut, then accept or cancel.
+struct ShortcutBadge: View {
+    let binding: HotkeyBinding
+    @Binding var isRecording: Bool
+    @Binding var pendingHotkey: HotkeyBinding?
+    let onAccept: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        if isRecording {
+            HStack(spacing: 6) {
+                Text(pendingHotkey?.displayString ?? "Press keys\u{2026}")
+                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .foregroundStyle(pendingHotkey != nil ? .primary : .tertiary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .strokeBorder(Color.accentColor, lineWidth: 1.5)
+                    )
+                    .background(
+                        KeyEventCatcher { event in
+                            if let hotkey = HotkeyBinding.from(event: event) {
+                                pendingHotkey = hotkey
+                            }
+                        }
+                    )
+
+                if pendingHotkey != nil {
+                    Button(action: onAccept) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                            .font(.system(size: 16))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Accept new shortcut")
+                }
+
+                Button(action: onCancel) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                        .font(.system(size: 16))
+                }
+                .buttonStyle(.plain)
+                .help("Cancel")
+            }
+        } else {
+            Button {
+                isRecording = true
+                pendingHotkey = nil
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "keyboard")
+                        .font(.system(size: 11))
+                    Text(binding.displayString)
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+            }
+            .buttonStyle(.plain)
+            .help("Click to change shortcut")
+        }
+    }
+}
+
+// MARK: - Key event catcher
+
+/// An invisible NSView-backed view that becomes first responder to capture key events
+/// during shortcut recording.
+struct KeyEventCatcher: NSViewRepresentable {
+    let onKeyDown: (NSEvent) -> Void
+
+    func makeNSView(context: Context) -> KeyCatcherView {
+        let view = KeyCatcherView()
+        view.onKeyDown = onKeyDown
+        return view
+    }
+
+    func updateNSView(_ nsView: KeyCatcherView, context: Context) {
+        nsView.onKeyDown = onKeyDown
+    }
+
+    class KeyCatcherView: NSView {
+        var onKeyDown: ((NSEvent) -> Void)?
+
+        override var acceptsFirstResponder: Bool { true }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            DispatchQueue.main.async { [weak self] in
+                self?.window?.makeFirstResponder(self)
+            }
+        }
+
+        override func keyDown(with event: NSEvent) {
+            onKeyDown?(event)
+        }
+    }
+}
+
+// MARK: - Preset pill
+
+/// Compact pill button for loading a preset.
+struct PresetPill: View {
+    let preset: WeatherPreset
+    let onTap: () -> Void
+    let onDelete: (() -> Void)?
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 3) {
+                Image(systemName: iconForType(preset.weatherType))
+                    .font(.system(size: 8))
+                Text(preset.name)
+                    .font(.caption2)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(.quaternary, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            if let onDelete {
+                Button(role: .destructive) { onDelete() } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        }
+    }
+
+    private func iconForType(_ type: WeatherType) -> String {
+        switch type {
+        case .snow:         return "snowflake"
+        case .rain:         return "cloud.rain"
+        case .thunderstorm: return "cloud.bolt.rain"
+        case .fog:          return "cloud.fog"
+        case .aiStorm:      return "bolt"
+        }
+    }
+}
+
+// MARK: - Flow layout
+
+/// Simple horizontal wrapping layout for preset pills.
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 4
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        arrange(proposal: proposal, subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = arrange(proposal: proposal, subviews: subviews)
+        for (index, position) in result.positions.enumerated() {
+            subviews[index].place(at: CGPoint(x: bounds.minX + position.x,
+                                               y: bounds.minY + position.y),
+                                   proposal: .unspecified)
+        }
+    }
+
+    private struct ArrangeResult {
+        var positions: [CGPoint]
+        var size: CGSize
+    }
+
+    private func arrange(proposal: ProposedViewSize, subviews: Subviews) -> ArrangeResult {
+        let maxWidth = proposal.width ?? .infinity
+        var positions: [CGPoint] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var totalWidth: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x + size.width > maxWidth && x > 0 {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            positions.append(CGPoint(x: x, y: y))
+            rowHeight = max(rowHeight, size.height)
+            x += size.width + spacing
+            totalWidth = max(totalWidth, x - spacing)
+        }
+
+        return ArrangeResult(positions: positions,
+                             size: CGSize(width: totalWidth, height: y + rowHeight))
+    }
+}
+
 // MARK: - About view
 
-/// Footer view showing the app version string and a tappable GitHub link.
 struct AboutView: View {
     private let repoURL = URL(string: "https://github.com/todddube/wthrr_mac")!
 
-    /// Reads the marketing version and build number from the app bundle at runtime.
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         let build   = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
@@ -516,7 +1166,7 @@ struct AboutView: View {
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 4) {
-                Text("by Todd Dube  ·")
+                Text("by Todd Dube  \u{00B7}")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
 

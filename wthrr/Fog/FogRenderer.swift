@@ -1,0 +1,73 @@
+// FogRenderer.swift
+// wthrr — macOS decorative weather overlay
+//
+// Author: Todd Dube
+// GitHub: https://github.com/todddube/wthrr_mac
+
+import SwiftUI
+
+// MARK: - Fog renderer
+
+/// Draws slow-drifting translucent fog bands and wisp particles.
+enum FogRenderer {
+    static func draw(
+        context: GraphicsContext,
+        size: CGSize,
+        isDark: Bool,
+        particles: [Particle],
+        fogBands: [FogBand],
+        particleOpacity: Double = 1.0,
+        tintHue: Double = -1
+    ) {
+        let baseColor = ColorTheme.fogBaseColor(isDark: isDark, hue: tintHue)
+
+        // Draw fog bands — large translucent horizontal gradient strips
+        for band in fogBands {
+            let topY = band.y - band.height / 2
+            let bottomY = band.y + band.height / 2
+            let rect = CGRect(x: 0, y: topY, width: size.width, height: band.height)
+
+            var ctx = context
+            ctx.opacity = band.opacity * particleOpacity
+
+            let gradient = Gradient(colors: [
+                baseColor.opacity(0),
+                baseColor.opacity(0.5),
+                baseColor.opacity(0.8),
+                baseColor.opacity(0.5),
+                baseColor.opacity(0)
+            ])
+            ctx.fill(
+                Path(rect),
+                with: .linearGradient(
+                    gradient,
+                    startPoint: CGPoint(x: size.width / 2, y: topY),
+                    endPoint: CGPoint(x: size.width / 2, y: bottomY)
+                )
+            )
+        }
+
+        // Draw wisp particles — large soft ellipses using radial gradients
+        // (avoids per-particle blur filters which are expensive GPU passes)
+        for particle in particles {
+            var ctx = context
+            ctx.opacity = particle.opacity * particleOpacity
+
+            // Scale up the ellipse and use a radial gradient to simulate blur
+            let r = particle.size * 2.5
+            let center = CGPoint(x: particle.x, y: particle.y)
+            let rect = CGRect(x: particle.x - r, y: particle.y - r * 0.4,
+                               width: r * 2, height: r * 0.8)
+            let gradient = Gradient(colors: [
+                baseColor.opacity(0.6),
+                baseColor.opacity(0.25),
+                baseColor.opacity(0)
+            ])
+            ctx.fill(
+                Ellipse().path(in: rect),
+                with: .radialGradient(gradient, center: center,
+                                       startRadius: 0, endRadius: r)
+            )
+        }
+    }
+}

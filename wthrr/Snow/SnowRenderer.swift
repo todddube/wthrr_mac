@@ -31,13 +31,15 @@ enum SnowRenderer {
         baselineMap: [CGFloat],
         accumulationEnabled: Bool,
         columnWidth: CGFloat,
-        particleOpacity: Double = 1.0
+        particleOpacity: Double = 1.0,
+        tintHue: Double = -1
     ) {
-        drawFlakes(context: context, isDark: isDark, particles: particles, particleOpacity: particleOpacity)
+        drawFlakes(context: context, isDark: isDark, particles: particles, particleOpacity: particleOpacity, tintHue: tintHue)
         drawDrift(
             context: context, size: size, isDark: isDark,
             accumulationMap: accumulationMap, baselineMap: baselineMap,
-            accumulationEnabled: accumulationEnabled, columnWidth: columnWidth
+            accumulationEnabled: accumulationEnabled, columnWidth: columnWidth,
+            tintHue: tintHue
         )
     }
 
@@ -49,12 +51,11 @@ enum SnowRenderer {
         context: GraphicsContext,
         isDark: Bool,
         particles: [Particle],
-        particleOpacity: Double
+        particleOpacity: Double,
+        tintHue: Double = -1
     ) {
         for flake in particles {
-            let flakeColor: Color = isDark
-                ? Color(red: 1.0, green: 1.0 - flake.tint * 0.05, blue: 1.0)
-                : Color(red: 0.88, green: 0.92 - flake.tint * 0.04, blue: 0.98)
+            let flakeColor = ColorTheme.snowColor(tint: flake.tint, isDark: isDark, hue: tintHue)
 
             var ctx = context
             ctx.opacity = flake.opacity * particleOpacity
@@ -203,14 +204,13 @@ enum SnowRenderer {
         accumulationMap: [CGFloat],
         baselineMap: [CGFloat],
         accumulationEnabled: Bool,
-        columnWidth: CGFloat
+        columnWidth: CGFloat,
+        tintHue: Double = -1
     ) {
         let mapCount = accumulationMap.count
         guard accumulationEnabled && mapCount > 1 else { return }
 
-        let driftFillColor: Color = isDark
-            ? Color(white: 0.95)
-            : Color(red: 0.82, green: 0.87, blue: 0.95)
+        let driftFillColor = ColorTheme.snowDriftColor(isDark: isDark, hue: tintHue)
 
         let driftEdgeColor: Color = isDark
             ? Color(white: 0.80, opacity: 0.6)

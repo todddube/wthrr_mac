@@ -78,6 +78,11 @@ final class WeatherAnimationModel {
     /// Frame counter for glitch teleport checks.
     private var glitchFrame: Int = 0
 
+    // MARK: Fog effects
+
+    /// Active fog gradient bands drifting across the screen.
+    private(set) var fogBands: [FogBand] = []
+
     // MARK: Clouds
 
     /// Active clouds drifting across the top of the screen.
@@ -143,14 +148,23 @@ final class WeatherAnimationModel {
             clearRainEffects()
             clearAccumulation()
             clearAIStormEffects()
+            clearFogEffects()
         }
 
         if settings.weatherType == .rain && puddles.isEmpty {
             initializePuddles()
         }
 
+        if settings.weatherType == .thunderstorm && puddles.isEmpty {
+            initializePuddles()
+        }
+
         if settings.weatherType == .aiStorm && scanLines.isEmpty {
             initializeScanLines()
+        }
+
+        if settings.weatherType == .fog && fogBands.isEmpty {
+            initializeFogBands()
         }
 
         rebuildBaseline()
@@ -217,9 +231,11 @@ final class WeatherAnimationModel {
     /// Advances all particle positions by one frame.
     /// Handles snow accumulation, rain splashes, and puddle growth depending on settings.
     /// Called each frame by the TimelineView-driven Canvas.
-    func advance() {
+    func advance(settings: WeatherSettings) {
         let now = CACurrentMediaTime()
-        let settings = WeatherSettings.shared
+
+        // Paused: keep lastTime current so we don't get a huge dt spike on resume
+        if settings.isPaused { lastTime = now; return }
 
         // Low-power mode: skip frames to target ~30 fps instead of the display refresh rate
         if settings.lowPowerMode && lastTime > 0 && (now - lastTime) < 1.0 / 30.0 { return }
@@ -232,7 +248,7 @@ final class WeatherAnimationModel {
         let speedScale = CGFloat(settings.speedMultiplier)
         let windScale  = CGFloat(settings.windStrength)
         let time       = CGFloat(now)
-        let isRain     = settings.weatherType == .rain
+        let isRain     = settings.weatherType == .rain || settings.weatherType == .thunderstorm
         wind.update(dt: dt, strength: windScale)
         switch settings.windDirection {
         case .left:    currentWindVelocity = -abs(wind.velocity)
@@ -255,6 +271,11 @@ final class WeatherAnimationModel {
                 advanceRainParticle(at: i, accumulating: accumulating)
             } else if settings.weatherType == .aiStorm {
                 advanceAIStormParticle(at: i)
+            } else if settings.weatherType == .fog {
+                if particles[i].y > screenSize.height + 40 {
+                    particles[i].y = -40
+                    particles[i].x = CGFloat.random(in: 0...screenSize.width)
+                }
             } else {
                 advanceSnowParticle(at: i, accumulating: accumulating, maxAccumH: maxAccumH)
             }
@@ -270,7 +291,17 @@ final class WeatherAnimationModel {
         ageSplashes(dt: dt)
         advancePuddleRipples(dt: dt)
 
-        if isRain && settings.lightningEnabled {
+        // Advance fog bands
+        if settings.weatherType == .fog {
+            for i in fogBands.indices {
+                fogBands[i].y += fogBands[i].speed * dt
+                if fogBands[i].y > screenSize.height + fogBands[i].height {
+                    fogBands[i].y = -fogBands[i].height
+                }
+            }
+        }
+
+        if (isRain && settings.lightningEnabled) || settings.weatherType == .thunderstorm {
             advanceLightning(dt: dt)
         }
 
@@ -278,8 +309,8 @@ final class WeatherAnimationModel {
             advanceAIStormEffects(dt: dt)
         }
 
-        if !isRain && settings.weatherType != .aiStorm && accumulating && frameCount % 30 == 0 { smoothAccumulation() }
-        if !isRain && settings.weatherType != .aiStorm && accumulating && frameCount % 4 == 0 { meltExcessSnow(maxAccumH: maxAccumH) }
+        if settings.weatherType == .snow && accumulating && frameCount % 30 == 0 { smoothAccumulation() }
+        if settings.weatherType == .snow && accumulating && frameCount % 4 == 0 { meltExcessSnow(maxAccumH: maxAccumH) }
 
         advanceClouds(dt: dt)
 
@@ -700,6 +731,26 @@ final class WeatherAnimationModel {
         )
     }
 
+    // MARK: Fog effect helpers
+
+    /// Populates the fog bands array with 5-8 translucent gradient bands.
+    private func initializeFogBands() {
+        guard screenSize != .zero else { return }
+        fogBands = (0..<Int.random(in: 5...8)).map { _ in
+            FogBand(
+                y: CGFloat.random(in: 0...screenSize.height),
+                height: CGFloat.random(in: 60...200),
+                speed: CGFloat.random(in: 3...12),
+                opacity: Double.random(in: 0.06...0.18),
+                phase: CGFloat.random(in: 0...(.pi * 2))
+            )
+        }
+    }
+
+    func clearFogEffects() {
+        fogBands.removeAll()
+    }
+
     /// Empties all AI storm effect arrays.
     func clearAIStormEffects() {
         scanLines.removeAll()
@@ -783,7 +834,8 @@ final class WeatherAnimationModel {
     private func configureClouds(settings: WeatherSettings) {
         guard screenSize != .zero else { return }
 
-        if !settings.cloudsEnabled {
+        let cloudsNeeded = settings.cloudsEnabled || settings.weatherType == .thunderstorm
+        if !cloudsNeeded {
             if !clouds.isEmpty { clouds.removeAll() }
             builtCloudsEnabled = false
             return
@@ -813,7 +865,7 @@ final class WeatherAnimationModel {
     private func advanceClouds(dt: CGFloat) {
         guard !clouds.isEmpty else { return }
         let settings = WeatherSettings.shared
-        guard settings.cloudsEnabled else { return }
+        guard settings.cloudsEnabled || settings.weatherType == .thunderstorm else { return }
 
         for i in clouds.indices {
             clouds[i].x += clouds[i].speed * CGFloat(settings.cloudSpeed) * dt
@@ -840,8 +892,12 @@ final class WeatherAnimationModel {
         switch weatherType {
         case .rain:
             return RainParticleFactory.makeRaindrop(startY: startY, screenWidth: screenSize.width, rng: &rng)
+        case .thunderstorm:
+            return RainParticleFactory.makeRaindrop(startY: startY, screenWidth: screenSize.width, rng: &rng)
         case .aiStorm:
             return AIStormParticleFactory.makeGlitch(startY: startY, screenWidth: screenSize.width, rng: &rng)
+        case .fog:
+            return FogParticleFactory.makeWisp(startY: startY, screenWidth: screenSize.width, rng: &rng)
         case .snow:
             return SnowParticleFactory.makeFlake(startY: startY, screenWidth: screenSize.width, rng: &rng)
         }

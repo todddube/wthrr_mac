@@ -40,6 +40,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// True when the splash was triggered manually via the settings button,
     /// meaning menu-bar interactions should NOT auto-dismiss it.
     private var splashIsManual = false
+    /// Global hotkey monitor for pause/resume (Cmd+Shift+P).
+    private var globalHotkeyMonitor: Any?
+    /// Local hotkey monitor for when the app is focused.
+    private var localHotkeyMonitor: Any?
 
     /// Builds the NSStatusItem and NSPopover, then starts the overlay.
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -59,16 +63,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         overlayWindowController = OverlayWindowController()
         overlayWindowController?.showWindows()
 
-        showSplashScreen()
+        // Show onboarding on first launch, or What's New after update, or splash
+        if !UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") {
+            showOnboarding()
+        } else if WhatsNewView.shouldShow {
+            showWhatsNew()
+        } else {
+            showSplashScreen()
+        }
 
-        // Keep the icon in sync with the weather type setting.
+        // Keep the icon in sync with the weather type and pause state.
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(weatherTypeDidChange),
             name: .weatherTypeChanged,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(pauseStateDidChange),
+            name: .weatherPauseChanged,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(hotkeyBindingDidChange),
+            name: .hotkeyBindingChanged,
+            object: nil
+        )
         updateStatusItemIcon()
+        setupGlobalHotkey()
 
         // Clean SIGTERM → NSApp.terminate so applicationWillTerminate fires.
         signal(SIGTERM, SIG_IGN)
@@ -90,8 +114,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = item
 
         let p = NSPopover()
-        p.animates = true
-        p.contentSize   = NSSize(width: 280, height: 520)
+        p.contentSize   = NSSize(width: 300, height: 620)
         p.behavior      = .transient
         p.animates      = true
         p.contentViewController = NSHostingController(
@@ -131,6 +154,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
 
+        let pauseTitle = WeatherSettings.shared.isPaused ? "Resume" : "Pause"
+        let pauseItem = NSMenuItem(title: pauseTitle, action: #selector(togglePauseFromMenu), keyEquivalent: "")
+        pauseItem.target = self
+        menu.addItem(pauseItem)
+
+        menu.addItem(.separator())
+
         let settingsItem = NSMenuItem(title: "Settings", action: #selector(togglePopover), keyEquivalent: ",")
         settingsItem.target = self
         menu.addItem(settingsItem)
@@ -154,15 +184,66 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func updateStatusItemIcon() {
-        let name: String
-        switch WeatherSettings.shared.weatherType {
-        case .rain:    name = "cloud.rain.fill"
-        case .aiStorm: name = "bolt.trianglebadge.exclamationmark.fill"
-        case .snow:    name = "cloud.snow.fill"
+        let iconName: String
+        if WeatherSettings.shared.isPaused {
+            iconName = "pause.circle"
+        } else {
+            switch WeatherSettings.shared.weatherType {
+            case .rain:         iconName = "cloud.rain.fill"
+            case .aiStorm:      iconName = "bolt.trianglebadge.exclamationmark.fill"
+            case .snow:         iconName = "cloud.snow.fill"
+            case .thunderstorm: iconName = "cloud.bolt.rain.fill"
+            case .fog:          iconName = "cloud.fog.fill"
+            }
         }
-        if let img = NSImage(systemSymbolName: name, accessibilityDescription: "wthrr") {
+        if let img = NSImage(systemSymbolName: iconName, accessibilityDescription: "wthrr") {
             statusItem?.button?.image = img
         }
+    }
+
+    @objc private func togglePauseFromMenu() {
+        WeatherSettings.shared.togglePause()
+    }
+
+    @objc private func pauseStateDidChange() {
+        updateStatusItemIcon()
+    }
+
+    // MARK: - Global hotkey
+
+    /// Registers the global and local hotkey monitors.
+    private func setupGlobalHotkey() {
+        tearDownHotkeyMonitors()
+        // Global monitor (when app is not focused)
+        globalHotkeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.handleHotkeyEvent(event)
+        }
+        // Local monitor (when app is focused, e.g. popover open)
+        localHotkeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if self?.handleHotkeyEvent(event) == true { return nil }
+            return event
+        }
+    }
+
+    private func tearDownHotkeyMonitors() {
+        if let monitor = globalHotkeyMonitor { NSEvent.removeMonitor(monitor); globalHotkeyMonitor = nil }
+        if let monitor = localHotkeyMonitor { NSEvent.removeMonitor(monitor); localHotkeyMonitor = nil }
+    }
+
+    @objc private func hotkeyBindingDidChange() {
+        // Re-register monitors (the matching logic reads the binding dynamically,
+        // so we just need to ensure monitors are active).
+        setupGlobalHotkey()
+    }
+
+    /// Returns true if the event matched the user-configured pause hotkey.
+    @discardableResult
+    private func handleHotkeyEvent(_ event: NSEvent) -> Bool {
+        guard WeatherSettings.shared.pauseHotkey.matches(event) else {
+            return false
+        }
+        WeatherSettings.shared.togglePause()
+        return true
     }
 
     // MARK: - Splash screen
@@ -211,9 +292,66 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         })
     }
 
+    // MARK: - Onboarding
+
+    /// Shows the first-launch onboarding walkthrough.
+    private func showOnboarding() {
+        let window = KeyableBorderlessWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 380, height: 480),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.backgroundColor = .clear
+        window.isOpaque = false
+        window.hasShadow = true
+        window.level = .floating
+        window.isMovableByWindowBackground = true
+        window.center()
+
+        let onboardingView = OnboardingView { [weak self] in
+            self?.dismissSplashScreen()
+        }
+        .environment(WeatherSettings.shared)
+
+        window.contentView = NSHostingView(rootView: onboardingView)
+        window.makeKeyAndOrderFront(nil)
+        splashWindow = window
+    }
+
+    // MARK: - What's New
+
+    /// Shows the post-update changelog screen.
+    private func showWhatsNew() {
+        let window = KeyableBorderlessWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 380, height: 480),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.backgroundColor = .clear
+        window.isOpaque = false
+        window.hasShadow = true
+        window.level = .floating
+        window.isMovableByWindowBackground = true
+        window.center()
+
+        let whatsNewView = WhatsNewView {  [weak self] in
+            WhatsNewView.markAsSeen()
+            self?.dismissSplashScreen()
+        }
+
+        window.contentView = NSHostingView(rootView: whatsNewView)
+        window.makeKeyAndOrderFront(nil)
+        splashWindow = window
+    }
+
     // MARK: - Lifecycle
 
     func applicationWillTerminate(_ notification: Notification) {
+        tearDownHotkeyMonitors()
         overlayWindowController?.tearDown()
         overlayWindowController = nil
         if let item = statusItem {
@@ -241,4 +379,8 @@ private class KeyableBorderlessWindow: NSWindow {
 extension Notification.Name {
     /// Posted by WeatherSettings when weatherType changes, so AppDelegate can sync the icon.
     static let weatherTypeChanged = Notification.Name("wthrr.weatherTypeChanged")
+    /// Posted by WeatherSettings when isPaused changes, so AppDelegate can sync the icon.
+    static let weatherPauseChanged = Notification.Name("wthrr.weatherPauseChanged")
+    /// Posted by WeatherSettings when the pause hotkey binding changes.
+    static let hotkeyBindingChanged = Notification.Name("wthrr.hotkeyBindingChanged")
 }

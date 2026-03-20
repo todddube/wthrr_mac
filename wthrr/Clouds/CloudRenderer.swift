@@ -22,7 +22,7 @@ enum CloudRenderer {
     ) {
         for cloud in clouds {
             switch weatherType {
-            case .snow, .rain:
+            case .snow, .rain, .thunderstorm, .fog:
                 drawNaturalCloud(context: context, cloud: cloud, isDark: isDark)
             case .aiStorm:
                 drawAICloud(context: context, cloud: cloud, isDark: isDark)

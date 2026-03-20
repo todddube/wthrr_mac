@@ -8,30 +8,37 @@ import SwiftUI
 
 // MARK: - Neon palette
 
-/// The AI storm neon colour palette — toxic, electric, unsettling.
+/// The AI storm neon colour palette — supports multiple swappable themes.
 enum NeonPalette {
-    static let cyan    = Color(red: 0.0,  green: 0.95, blue: 1.0)
-    static let purple  = Color(red: 0.7,  green: 0.2,  blue: 1.0)
-    static let green   = Color(red: 0.1,  green: 1.0,  blue: 0.3)
-    static let magenta = Color(red: 1.0,  green: 0.1,  blue: 0.6)
+    /// Current palette colors resolved from settings.
+    private static var current: (Color, Color, Color, Color) {
+        ColorTheme.aiStormColors(palette: WeatherSettings.shared.aiStormPalette)
+    }
+
+    static var cyan:    Color { current.0 }
+    static var purple:  Color { current.1 }
+    static var green:   Color { current.2 }
+    static var magenta: Color { current.3 }
 
     /// Returns a colour from the palette based on a normalised tint value (0-1).
     static func color(for tint: Double) -> Color {
+        let c = current
         switch tint {
-        case ..<0.25:  return cyan
-        case ..<0.50:  return purple
-        case ..<0.75:  return green
-        default:       return magenta
+        case ..<0.25:  return c.0
+        case ..<0.50:  return c.1
+        case ..<0.75:  return c.2
+        default:       return c.3
         }
     }
 
     /// Returns a colour by palette index (for bolts, scan lines, patches).
     static func indexed(_ index: Int) -> Color {
+        let c = current
         switch index % 4 {
-        case 0:  return cyan
-        case 1:  return purple
-        case 2:  return green
-        default: return magenta
+        case 0:  return c.0
+        case 1:  return c.1
+        case 2:  return c.2
+        default: return c.3
         }
     }
 }

@@ -31,15 +31,11 @@ enum RainRenderer {
         puddles: [Puddle],
         windVelocity: CGFloat,
         bolt: LightningBolt? = nil,
-        particleOpacity: Double = 1.0
+        particleOpacity: Double = 1.0,
+        tintHue: Double = -1
     ) {
-        let rainColor: Color = isDark
-            ? Color(red: 0.78, green: 0.88, blue: 1.0)
-            : Color(red: 0.55, green: 0.65, blue: 0.80)
-
-        let splashColor: Color = isDark
-            ? Color(red: 0.75, green: 0.88, blue: 1.0, opacity: 0.7)
-            : Color(red: 0.50, green: 0.62, blue: 0.78, opacity: 0.6)
+        let rainColor = ColorTheme.rainStreakColor(isDark: isDark, hue: tintHue)
+        let splashColor = ColorTheme.rainSplashColor(isDark: isDark, hue: tintHue)
 
         // Screen flash behind everything
         if let bolt, bolt.flashOpacity > 0.001 {
@@ -48,7 +44,7 @@ enum RainRenderer {
             flashCtx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(.white))
         }
 
-        drawPuddles(context: context, size: size, isDark: isDark, puddles: puddles)
+        drawPuddles(context: context, size: size, isDark: isDark, puddles: puddles, tintHue: tintHue)
         drawStreaks(context: context, particles: particles, windVelocity: windVelocity,
                     rainColor: rainColor, particleOpacity: particleOpacity)
         drawSplashes(context: context, splashes: splashes, splashColor: splashColor)
@@ -67,19 +63,14 @@ enum RainRenderer {
         context: GraphicsContext,
         size: CGSize,
         isDark: Bool,
-        puddles: [Puddle]
+        puddles: [Puddle],
+        tintHue: Double = -1
     ) {
-        let puddleBodyColor: Color = isDark
-            ? Color(red: 0.30, green: 0.52, blue: 0.82, opacity: 0.72)
-            : Color(red: 0.28, green: 0.46, blue: 0.72, opacity: 0.60)
-
-        let puddleShineColor: Color = isDark
-            ? Color(red: 0.65, green: 0.82, blue: 1.0, opacity: 0.35)
-            : Color(red: 0.70, green: 0.84, blue: 1.0, opacity: 0.28)
-
-        let rippleColor: Color = isDark
-            ? Color(red: 0.60, green: 0.80, blue: 1.0)
-            : Color(red: 0.45, green: 0.65, blue: 0.90)
+        let puddleBase = ColorTheme.rainPuddleColor(isDark: isDark, hue: tintHue)
+        let puddleBodyColor = puddleBase.opacity(isDark ? 0.72 : 0.60)
+        let puddleShineColor = ColorTheme.rainSplashColor(isDark: isDark, hue: tintHue)
+            .opacity(isDark ? 0.35 : 0.28)
+        let rippleColor = ColorTheme.rainSplashColor(isDark: isDark, hue: tintHue)
 
         for puddle in puddles where puddle.height > 0.5 {
             let halfH  = puddle.height

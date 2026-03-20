@@ -50,6 +50,22 @@ struct SplashView: View {
                 ("display.2", "Multi-display support"),
                 ("slider.horizontal.3", "Fully configurable"),
             ]
+        case .thunderstorm:
+            return [
+                ("cloud.bolt.rain.fill", "Heavy rain with lightning"),
+                ("bolt.fill", "Continuous thunder strikes"),
+                ("cloud.fill", "Dark storm clouds"),
+                ("display.2", "Multi-display support"),
+                ("slider.horizontal.3", "Fully configurable"),
+            ]
+        case .fog:
+            return [
+                ("cloud.fog.fill", "Drifting fog bands"),
+                ("circle.dotted", "Translucent wisp particles"),
+                ("wind", "Gentle horizontal drift"),
+                ("display.2", "Multi-display support"),
+                ("slider.horizontal.3", "Fully configurable"),
+            ]
         case .snow:
             return [
                 ("snowflake", "Three crystal shapes"),
