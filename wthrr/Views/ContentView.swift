@@ -56,6 +56,7 @@ struct ContentView: View {
                         Text("Storm").tag(WeatherType.thunderstorm)
                         Text("Fog").tag(WeatherType.fog)
                         Text("AI").tag(WeatherType.aiStorm)
+                        Text("Aurora").tag(WeatherType.aurora)
                     } label: {
                         EmptyView()
                     }
@@ -836,6 +837,7 @@ struct ContentView: View {
         case .thunderstorm: return rainSpeedLabel(v)
         case .aiStorm:      return aiStormSpeedLabel(v)
         case .fog:          return speedLabel(v)
+        case .aurora:       return speedLabel(v)
         case .snow:         return speedLabel(v)
         }
     }

@@ -83,6 +83,9 @@ final class WeatherAnimationModel {
     /// Active fog gradient bands drifting across the screen.
     private(set) var fogBands: [FogBand] = []
 
+    /// Elapsed time for aurora animation, advanced each frame.
+    private(set) var auroraTime: CGFloat = 0
+
     // MARK: Clouds
 
     /// Active clouds drifting across the top of the screen.
@@ -261,7 +264,9 @@ final class WeatherAnimationModel {
 
         for i in particles.indices {
             // Apply fall speed, wind, and wobble to each particle
-            particles[i].y += particles[i].fallSpeed * speedScale * dt
+            let angleRad = CGFloat(settings.windAngle) * .pi / 180
+            particles[i].y += particles[i].fallSpeed * speedScale * dt * cos(angleRad)
+            particles[i].x += particles[i].fallSpeed * speedScale * dt * sin(angleRad)
             particles[i].x += currentWindVelocity * particles[i].windSensitivity * speedScale * dt
             particles[i].x += sin(time * particles[i].wobbleFreq + particles[i].wobblePhase)
                                 * particles[i].wobbleAmp * dt
@@ -272,6 +277,11 @@ final class WeatherAnimationModel {
             } else if settings.weatherType == .aiStorm {
                 advanceAIStormParticle(at: i)
             } else if settings.weatherType == .fog {
+                if particles[i].y > screenSize.height + 40 {
+                    particles[i].y = -40
+                    particles[i].x = CGFloat.random(in: 0...screenSize.width)
+                }
+            } else if settings.weatherType == .aurora {
                 if particles[i].y > screenSize.height + 40 {
                     particles[i].y = -40
                     particles[i].x = CGFloat.random(in: 0...screenSize.width)
@@ -313,6 +323,11 @@ final class WeatherAnimationModel {
         if settings.weatherType == .snow && accumulating && frameCount % 4 == 0 { meltExcessSnow(maxAccumH: maxAccumH) }
 
         advanceClouds(dt: dt)
+
+        // Advance aurora time
+        if settings.weatherType == .aurora {
+            auroraTime += dt
+        }
 
         frameCount &+= 1
     }
@@ -412,7 +427,7 @@ final class WeatherAnimationModel {
     /// Gradually reduces accumulation near and above the cap so the drift surface
     /// breathes at a steady-state depth rather than freezing solid.
     private func meltExcessSnow(maxAccumH: CGFloat) {
-        let meltRate: CGFloat = 0.08
+        let meltRate: CGFloat = CGFloat(WeatherSettings.shared.snowMeltRate)
         for i in accumulationMap.indices {
             let excess = accumulationMap[i] - maxAccumH
             if excess >= 0 {
@@ -479,7 +494,8 @@ final class WeatherAnimationModel {
         timeUntilNextDataBolt -= dt
         if timeUntilNextDataBolt <= 0 && dataBolts.count < 2 {
             dataBolts.append(spawnDataBolt())
-            timeUntilNextDataBolt = CGFloat.random(in: 3...10)
+            let d = CGFloat(WeatherSettings.shared.aiStormDensity)
+            timeUntilNextDataBolt = CGFloat.random(in: 3...10) / d
         }
 
         // Advance corruption patches
@@ -495,7 +511,8 @@ final class WeatherAnimationModel {
             timeUntilNextPatch -= dt
             if timeUntilNextPatch <= 0 && corruptionPatches.count < 5 {
                 corruptionPatches.append(spawnCorruptionPatch())
-                timeUntilNextPatch = CGFloat.random(in: 0.3...1.5)
+                let d2 = CGFloat(WeatherSettings.shared.aiStormDensity)
+                timeUntilNextPatch = CGFloat.random(in: 0.3...1.5) / d2
             }
         }
 
@@ -685,7 +702,8 @@ final class WeatherAnimationModel {
         timeUntilNextFracture -= dt
         if timeUntilNextFracture <= 0 && screenFractures.count < 3 {
             screenFractures.append(spawnScreenFracture())
-            timeUntilNextFracture = CGFloat.random(in: 5...15)
+            let d3 = CGFloat(WeatherSettings.shared.aiStormDensity)
+            timeUntilNextFracture = CGFloat.random(in: 5...15) / d3
         }
     }
 
@@ -749,6 +767,10 @@ final class WeatherAnimationModel {
 
     func clearFogEffects() {
         fogBands.removeAll()
+    }
+
+    func clearAuroraEffects() {
+        // Aurora has no persistent effects to clear
     }
 
     /// Empties all AI storm effect arrays.
@@ -898,6 +920,8 @@ final class WeatherAnimationModel {
             return AIStormParticleFactory.makeGlitch(startY: startY, screenWidth: screenSize.width, rng: &rng)
         case .fog:
             return FogParticleFactory.makeWisp(startY: startY, screenWidth: screenSize.width, rng: &rng)
+        case .aurora:
+            return AuroraParticleFactory.makeBand(startY: startY, screenWidth: screenSize.width, rng: &rng)
         case .snow:
             return SnowParticleFactory.makeFlake(startY: startY, screenWidth: screenSize.width, rng: &rng)
         }

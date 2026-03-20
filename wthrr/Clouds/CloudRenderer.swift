@@ -18,14 +18,15 @@ enum CloudRenderer {
         size: CGSize,
         isDark: Bool,
         clouds: [Cloud],
-        weatherType: WeatherType
+        weatherType: WeatherType,
+        cloudOpacity: Double = 1.0
     ) {
         for cloud in clouds {
             switch weatherType {
-            case .snow, .rain, .thunderstorm, .fog:
-                drawNaturalCloud(context: context, cloud: cloud, isDark: isDark)
+            case .snow, .rain, .thunderstorm, .fog, .aurora:
+                drawNaturalCloud(context: context, cloud: cloud, isDark: isDark, cloudOpacity: cloudOpacity)
             case .aiStorm:
-                drawAICloud(context: context, cloud: cloud, isDark: isDark)
+                drawAICloud(context: context, cloud: cloud, isDark: isDark, cloudOpacity: cloudOpacity)
             }
         }
     }
@@ -36,7 +37,8 @@ enum CloudRenderer {
     private static func drawNaturalCloud(
         context: GraphicsContext,
         cloud: Cloud,
-        isDark: Bool
+        isDark: Bool,
+        cloudOpacity: Double = 1.0
     ) {
         var rng = SeededRNG(seed: cloud.blobSeed)
         let baseGray: Double = isDark ? 0.55 : 0.72
@@ -52,7 +54,7 @@ enum CloudRenderer {
 
             let grayShift = rng.next(in: -0.08...0.08)
             let gray = baseGray + grayShift
-            let alpha = cloud.opacity * rng.next(in: 0.6...1.0)
+            let alpha = cloud.opacity * cloudOpacity * rng.next(in: 0.6...1.0)
 
             let rect = CGRect(
                 x: cx - blobW / 2,
@@ -76,7 +78,8 @@ enum CloudRenderer {
     private static func drawAICloud(
         context: GraphicsContext,
         cloud: Cloud,
-        isDark: Bool
+        isDark: Bool,
+        cloudOpacity: Double = 1.0
     ) {
         let neonPalette: [(Double, Double, Double)] = [
             (0.0, 1.0, 0.9),   // cyan
@@ -108,7 +111,7 @@ enum CloudRenderer {
                 red: palette.0 * tintStrength + 0.08,
                 green: palette.1 * tintStrength + 0.08,
                 blue: palette.2 * tintStrength + 0.08
-            ).opacity(cloud.opacity * rng.next(in: 0.5...1.0))
+            ).opacity(cloud.opacity * cloudOpacity * rng.next(in: 0.5...1.0))
 
             context.fill(Rectangle().path(in: rect), with: .color(fillColor))
         }
@@ -128,7 +131,7 @@ enum CloudRenderer {
                 red: palette.0,
                 green: palette.1,
                 blue: palette.2
-            ).opacity(cloud.opacity * 1.5)
+            ).opacity(cloud.opacity * cloudOpacity * 1.5)
 
             context.stroke(
                 path,

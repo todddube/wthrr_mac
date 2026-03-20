@@ -36,7 +36,8 @@ struct WeatherView: View {
                         size: size,
                         isDark: isDark,
                         clouds: model.clouds,
-                        weatherType: settings.weatherType
+                        weatherType: settings.weatherType,
+                        cloudOpacity: settings.cloudOpacity
                     )
                 }
 
@@ -81,6 +82,12 @@ struct WeatherView: View {
                         particleOpacity: pOpacity,
                         tintHue: settings.fogTintHue
                     )
+                case .aurora:
+                    AuroraRenderer.draw(
+                        context: context, size: size, isDark: isDark,
+                        time: model.auroraTime,
+                        particleOpacity: pOpacity
+                    )
                 case .snow:
                     SnowRenderer.draw(
                         context: context, size: size, isDark: isDark,
@@ -107,6 +114,7 @@ struct WeatherView: View {
             model.clearRainEffects()
             model.clearAIStormEffects()
             model.clearFogEffects()
+            model.clearAuroraEffects()
         }
     }
 }
