@@ -219,18 +219,26 @@ final class WeatherAnimationModel {
     /// Called each frame by the TimelineView-driven Canvas.
     func advance() {
         let now = CACurrentMediaTime()
+        let settings = WeatherSettings.shared
+
+        // Low-power mode: skip frames to target ~30 fps instead of the display refresh rate
+        if settings.lowPowerMode && lastTime > 0 && (now - lastTime) < 1.0 / 30.0 { return }
+
         let dt: CGFloat = lastTime == 0 ? 1.0 / 60.0 : CGFloat(min(now - lastTime, 1.0 / 20.0))
         lastTime = now
 
         guard !particles.isEmpty else { return }
 
-        let settings   = WeatherSettings.shared
         let speedScale = CGFloat(settings.speedMultiplier)
         let windScale  = CGFloat(settings.windStrength)
         let time       = CGFloat(now)
         let isRain     = settings.weatherType == .rain
         wind.update(dt: dt, strength: windScale)
-        currentWindVelocity = wind.velocity
+        switch settings.windDirection {
+        case .left:    currentWindVelocity = -abs(wind.velocity)
+        case .right:   currentWindVelocity =  abs(wind.velocity)
+        case .natural: currentWindVelocity = wind.velocity
+        }
 
         let accumulating = settings.accumulationEnabled && !accumulationMap.isEmpty
         let maxAccumH    = CGFloat(settings.maxAccumulationHeight)
@@ -238,7 +246,7 @@ final class WeatherAnimationModel {
         for i in particles.indices {
             // Apply fall speed, wind, and wobble to each particle
             particles[i].y += particles[i].fallSpeed * speedScale * dt
-            particles[i].x += wind.velocity * particles[i].windSensitivity * speedScale * dt
+            particles[i].x += currentWindVelocity * particles[i].windSensitivity * speedScale * dt
             particles[i].x += sin(time * particles[i].wobbleFreq + particles[i].wobblePhase)
                                 * particles[i].wobbleAmp * dt
             particles[i].rotation += particles[i].rotationSpeed * dt
@@ -729,7 +737,7 @@ final class WeatherAnimationModel {
         timeUntilNextStrike -= dt
         if timeUntilNextStrike <= 0 && activeBolt == nil {
             activeBolt = spawnBolt()
-            timeUntilNextStrike = CGFloat.random(in: 8...25)
+            timeUntilNextStrike = CGFloat.random(in: 8...25) / CGFloat(WeatherSettings.shared.lightningFrequency)
         }
     }
 
@@ -808,7 +816,7 @@ final class WeatherAnimationModel {
         guard settings.cloudsEnabled else { return }
 
         for i in clouds.indices {
-            clouds[i].x += clouds[i].speed * dt
+            clouds[i].x += clouds[i].speed * CGFloat(settings.cloudSpeed) * dt
         }
 
         // Recycle clouds that have fully exited the right edge

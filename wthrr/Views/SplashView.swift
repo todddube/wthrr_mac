@@ -21,8 +21,6 @@ struct SplashView: View {
     /// Countdown seconds remaining before auto-dismiss.
     @State private var secondsRemaining: Int = 8
     @State private var appeared = false
-    @State private var showMenuBarHint = true
-    @State private var arrowBounce = true
 
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -150,30 +148,6 @@ struct SplashView: View {
                         .foregroundStyle(.white.opacity(0.4))
                 }
                 .opacity(appeared ? 1 : 0)
-
-                Spacer().frame(height: 12)
-
-                // Menu bar hint — bouncing arrow to guide user
-                if showMenuBarHint {
-                    VStack(spacing: 6) {
-                        Image(systemName: "arrow.up")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.9))
-                            .offset(y: arrowBounce ? -4 : 4)
-                            .animation(
-                                .easeInOut(duration: 0.6).repeatForever(autoreverses: true),
-                                value: arrowBounce
-                            )
-
-                        Text("Find wthrr in your menu bar")
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.85))
-                    }
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
-                    .onAppear {
-                        arrowBounce = true
-                    }
-                }
 
                 Spacer().frame(height: 12)
 

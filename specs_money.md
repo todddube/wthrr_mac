@@ -44,100 +44,52 @@ For wthrr, the full experience IS the product (weather overlays). There's no obv
 
 ---
 
-## Trial Strategy Options
+## Trial Model (Decided)
 
-### Option A: 14-Day Full Trial (Recommended)
+### 14-Day Full Trial → 10-Minute Sessions After Expiry
 
-**How it works:**
-- Download is free. All features work for **14 days** — snow, rain, AI storm, all displays, full customization.
+**Days 1–14 (full trial):**
+- All features work with zero restrictions — snow, rain, AI storm, all displays, full customization
 - On day 10, a subtle banner appears in the popover: *"Trial ends in 4 days — get wthrr for $4.99"*
-- On day 15, overlays stop rendering. The popover shows a clean purchase/activate screen.
-- A "Preview" button lets users see a **30-second demo** of the effects after trial expiry (keeps the hook alive).
+- No interruptions, no nag screens during the trial period
 
-**Why 14 days:**
-- Industry data shows 14-day trials convert 2–3× better than immediate paywalls
-- Users build the habit of seeing weather on their desktop — it becomes part of their setup
-- Shottr and Bartender both use multi-week trials and convert well at higher price points
-- 14 days is long enough to experience seasonal weather changes and different modes
+**Day 15+ (expired, unlicensed):**
+- App still launches and runs normally — all features, all modes, all displays
+- After **10 minutes**, overlays pause and a purchase prompt appears in the popover
+- User can quit and relaunch to get another 10-minute session (per-session timer, not cumulative)
+- No hard lockout — the app always works, just in 10-minute windows
 
-**After trial expires:**
-- Popover opens normally, shows settings (read-only) + purchase prompt
-- Overlays don't render (clean stop, no frozen particles)
-- "Preview for 30 seconds" button gives a taste to re-motivate purchase
-- "Activate License" field + "Buy License ($4.99)" button
+**Why this model works:**
+- 14-day trial builds the habit — weather effects become part of the user's desktop
+- 10-minute post-trial sessions are generous enough to keep the hook alive but short enough to motivate purchase
+- Users never feel "locked out" — the app always does something, which keeps it installed (uninstalled apps can't convert)
+- The relaunch loop creates mild friction that tips toward buying rather than restarting forever
+- Matches the Shottr/Bartender pattern of generous trial → soft limitation
+
+**What the user sees after 10 minutes expire:**
+- Overlays fade out (not a hard freeze — smooth stop)
+- Popover shows: "10-minute session ended"
+- "Activate License" text field + "Activate" button
+- "Buy License ($4.99)" button → opens LemonSqueezy product page
+- "Quit & Restart" hint — no explicit restart button needed, just relaunch the app
 
 **Implementation:**
 - `LicenseManager` stores `trialStartDate` in Keychain (tamper-resistant)
-- On each launch: `if daysSince(trialStartDate) > 14 && !isLicensed → expired`
-- No server call needed for trial logic — purely local
-
-### Option B: 2-Minute Per-Session Trial (Original Spec)
-
-**How it works:**
-- All features work for **2 minutes** per launch, then animation pauses
-- "Restart Preview" button gives another 2 minutes (unlimited restarts)
-- Purchase prompt appears when timer expires
-
-**Pros:**
-- Zero infrastructure (no persistent date tracking needed)
-- Users can keep restarting — low friction, mild annoyance drives purchase
-- Simpler to implement
-
-**Cons:**
-- 2 minutes may not be enough to appreciate the effects
-- Frequent interruptions can feel hostile rather than motivating
-- Users may just never bother buying because the restart loop is "good enough"
-
-### Option C: Feature-Limited Free Tier + Paid Unlock
-
-**How it works:**
-- **Free forever:** Snow mode only, single display, default settings
-- **Paid ($4.99):** Unlocks rain, AI storm, multi-display, full particle/wind/speed controls
-
-**What's free vs paid:**
-
-| Feature | Free | Licensed |
-|---------|------|----------|
-| Snow overlay | ✅ | ✅ |
-| Rain overlay | ❌ | ✅ |
-| AI Storm overlay | ❌ | ✅ |
-| Multi-display | ❌ (primary only) | ✅ |
-| Particle count slider | Limited (1–50) | Full (1–300) |
-| Wind control | ❌ (default wind) | ✅ |
-| Speed control | ❌ (default speed) | ✅ |
-
-**Pros:**
-- Free tier has genuine value — snow on one screen is still cool
-- No timer pressure — users upgrade when they want more
-- Locked features visible in UI create natural "upgrade moments"
-- Word of mouth: free users tell friends, some convert
-
-**Cons:**
-- More complex code (feature flags throughout settings and renderers)
-- Risk of free tier being "enough" for casual users
-- Harder to showcase rain and AI storm modes if users never see them
-
-**Hybrid possibility:** Free tier + 3-day "Premium Preview" where all features are unlocked so users can see what they're missing, then reverts to free tier.
-
-### Recommendation: Option A (14-Day Trial)
-
-The full experience IS the product. Feature-gating snow vs. rain vs. AI storm fragments the value proposition. A generous trial lets users fall in love with the complete experience, then pays for itself through higher conversion.
-
-However, **Option C (Feature-Limited)** is worth considering if you want organic word-of-mouth growth — free users are free marketing.
+- On each launch: check `daysSince(trialStartDate) > 14 && !isLicensed`
+- If trial expired: start a 10-minute countdown timer (600 seconds)
+- Timer managed in `LicenseManager`, checked by `WeatherAnimationModel.advance()`
+- Per-session only — no persistent timer state needed after the 14-day date check
 
 ---
 
-## License Key Platform
+## License Key Platform: LemonSqueezy
 
-### LemonSqueezy (Recommended)
-
-**Why LemonSqueezy over Gumroad:**
-- **Lower fees:** 5% + $0.50 per transaction (vs Gumroad's ~10%)
-- On a $4.99 sale: LemonSqueezy takes ~$0.75, Gumroad takes ~$0.50. Close enough — but LemonSqueezy's tooling is better.
+**Why LemonSqueezy:**
+- **5% + $0.50 per transaction** — on a $4.99 sale you keep ~$4.24
 - **Purpose-built license key system:** Each purchase auto-generates a license key with configurable activation limits
 - **API for validation:** Simple REST endpoint to verify keys
 - **Merchant of record:** Handles global sales tax, EU VAT — you don't deal with tax compliance
-- **Modern dashboard:** Better UX than Gumroad for managing products, keys, customers
+- **Modern dashboard:** Manage products, keys, customers, refunds
 - **No approval process:** Sign up and start selling immediately
 
 **How it works:**
@@ -147,10 +99,16 @@ However, **Option C (Feature-Limited)** is worth considering if you want organic
 4. In the app, user enters key → app calls LemonSqueezy API to validate
 5. On success, store key in Keychain → app unlocked permanently
 
-**API call:**
+**Validation API call:**
 ```
 POST https://api.lemonsqueezy.com/v1/licenses/validate
 Body: { "license_key": "<user_key>", "instance_name": "<machine_id>" }
+```
+
+**Activation API call (to register a machine):**
+```
+POST https://api.lemonsqueezy.com/v1/licenses/activate
+Body: { "license_key": "<user_key>", "instance_name": "<machine_uuid>" }
 ```
 
 **Revenue per sale:**
@@ -158,35 +116,19 @@ Body: { "license_key": "<user_key>", "instance_name": "<machine_id>" }
 - LemonSqueezy fee: ~$0.75
 - **You keep: ~$4.24**
 
-### Alternative: Gumroad
+**What LemonSqueezy handles for you:**
+- Payment processing (Stripe-backed)
+- License key generation + email delivery
+- License validation + activation tracking
+- Tax compliance (EU VAT, US sales tax — they're merchant of record)
+- Refunds (dashboard or API)
+- Sales analytics + customer management
+- Discount codes and promotional pricing
 
-Same basic model. Slightly higher fees but simpler API. Good fallback if LemonSqueezy doesn't feel right.
-
-**API call:**
-```
-POST https://api.gumroad.com/v2/licenses/verify
-Body: product_id=<id>&license_key=<key>
-```
-
-### Alternative: Paddle
-
-More polished, has a native macOS SDK that handles the entire activation UI for you. Popular with higher-priced Mac apps. Overkill for a $5 utility but worth knowing about.
-
-### Alternative: DIY with Stripe
-
-Full control, lowest fees (2.9% + $0.30), but you build and maintain everything: payment page, license key generation, email delivery, validation endpoint. Only worth it if you plan to sell multiple products.
-
-### Platform Comparison
-
-| | LemonSqueezy | Gumroad | Paddle | DIY + Stripe |
-|---|---|---|---|---|
-| Fee on $4.99 sale | ~$0.75 | ~$0.50 | ~$0.75 | ~$0.44 |
-| License key generation | ✅ Auto | ✅ Auto | ✅ Auto | 🔧 Build it |
-| License validation API | ✅ | ✅ | ✅ SDK | 🔧 Build it |
-| Tax compliance | ✅ | ✅ | ✅ | ❌ You handle |
-| Activation limits | ✅ Built-in | ⚠️ Basic | ✅ | 🔧 Build it |
-| Setup time | 1 hour | 1 hour | 2–3 hours | 1–2 days |
-| Infrastructure to maintain | None | None | None | Server + email |
+**What you build:**
+- `LicenseManager.swift` — one API call to validate, Keychain storage
+- `LicensePromptView.swift` — text field + buttons
+- "Buy License" button opens your LemonSqueezy product page in the browser
 
 ---
 
@@ -196,12 +138,18 @@ Full control, lowest fees (2.9% + $0.30), but you build and maintain everything:
 
 ```
 LicenseManager.swift
-├── LicenseState enum: .trial(daysRemaining) / .trialExpired / .licensed
+├── LicenseState enum:
+│   ├── .trial(daysRemaining: Int)        — days 1–14, full access
+│   ├── .expired(secondsRemaining: Int)   — day 15+, 10-min session running
+│   ├── .sessionEnded                     — 10-min session used up, paused
+│   └── .licensed                         — paid, unlimited
 ├── trialStartDate: Date? (stored in Keychain)
 ├── storedLicenseKey: String? (stored in Keychain)
 ├── isLicensed: Bool (computed)
 ├── trialDaysRemaining: Int (computed)
+├── sessionSecondsRemaining: Int (published, for UI countdown)
 ├── startTrialIfNeeded() — sets trialStartDate on first launch
+├── startSessionTimer() — begins 600s countdown (called on launch if trial expired)
 ├── validate(key:) async -> Result<Void, LicenseError>
 │   └── calls LemonSqueezy API, stores key on success
 ├── checkStatus() -> LicenseState
@@ -213,19 +161,34 @@ LicenseManager.swift
 - Survives app reinstalls (persists across updates)
 - Encrypted at rest by macOS
 
-### Phase 2: Trial Logic (~0.5 day)
+### Phase 2: Trial + Session Timer Logic (~0.5 day)
 
 In `WeatherAnimationModel.advance()`:
 ```swift
-guard LicenseManager.shared.state != .trialExpired else { return }
+switch LicenseManager.shared.state {
+case .licensed, .trial:
+    // Full access — advance particles normally
+    break
+case .expired:
+    // 10-min session active — advance particles, timer ticking down
+    break
+case .sessionEnded:
+    // Session used up — stop advancing, show purchase prompt
+    return
+}
 ```
 
-Trial countdown:
-- `trialStartDate` set on first launch
-- Each launch computes `Calendar.current.dateComponents([.day], from: trialStartDate, to: .now).day`
+**14-day trial logic:**
+- `trialStartDate` set on first launch via Keychain
+- Each launch: `Calendar.current.dateComponents([.day], from: trialStartDate, to: .now).day`
 - Days 1–9: No UI indication (let them enjoy it)
 - Days 10–14: Subtle banner in popover footer
-- Day 15+: Overlays stop, purchase screen shown
+
+**10-minute session logic (day 15+):**
+- On launch, `LicenseManager` detects trial is expired → starts 600-second countdown
+- Timer decrements each second, published for UI to show remaining time
+- At 0 seconds: state transitions to `.sessionEnded`, animation pauses
+- Timer is per-session only — relaunch resets it (no persistent state needed)
 
 ### Phase 3: License Prompt UI (~0.5 day)
 
@@ -233,11 +196,15 @@ Trial countdown:
 - Small text in popover footer: "Trial: 4 days remaining · Buy wthrr"
 - Non-intrusive, no modals, no blocking
 
-**After trial — purchase screen in popover:**
-- "Your 14-day preview has ended"
+**During expired 10-min session — visible countdown:**
+- Popover footer shows: "Session: 7:23 remaining · Buy wthrr"
+- All settings still functional, all modes available
+
+**After 10-min session ends — purchase screen in popover:**
+- "Your 10-minute session has ended"
 - TextField for license key + "Activate" button
 - "Buy License ($4.99)" button → opens LemonSqueezy product page
-- "Preview for 30 seconds" button → runs full effects briefly
+- Hint: "Restart the app for another 10-minute session"
 - On successful activation: dismiss prompt, resume overlays, show "Licensed ✓" badge
 
 ### Phase 4: LemonSqueezy Setup (~1 hour)
@@ -323,18 +290,439 @@ These assume direct traffic from Product Hunt, Reddit, Twitter/X, Hacker News po
 
 ---
 
-## Decision Matrix: Which Trial Model?
+## Marketing & Getting Noticed
 
-| Factor | 14-Day Trial (A) | 2-Min Session (B) | Feature-Limited (C) |
-|--------|------------------|--------------------|---------------------|
-| Conversion rate | ⭐⭐⭐ Highest | ⭐⭐ Medium | ⭐ Lowest |
-| Implementation complexity | Medium | Low | High |
-| User experience | Best (no interruptions) | Worst (constant pauses) | Good (but limited) |
-| Word of mouth potential | Medium | Low | ⭐⭐⭐ Highest (free users share) |
-| Code changes needed | ~300 lines | ~200 lines | ~500+ lines (feature flags) |
-| Risk of "good enough" free tier | None (expires) | Low (restart loop) | High (snow-only may suffice) |
+### The Core Advantage
 
-**Bottom line:** Start with Option A (14-day trial). If you later want organic growth, add a free tier (Option C) as v2 — the license infrastructure is the same either way.
+wthrr is inherently visual and shareable. Animated snow falling across a triple-monitor setup looks cool in a GIF. That's your entire marketing strategy in one sentence: **make short clips of the effects, put them everywhere.**
+
+---
+
+### Phase 1: Pre-Launch (Weeks 1–8)
+
+#### Build Your Landing Page
+Host on GitHub Pages, Netlify, or Carrd (free). Structure:
+
+**Hero section (above the fold):**
+- Looping GIF or autoplay video of weather effects on a real Mac desktop
+- Headline: "Animated Weather Effects for Your macOS Desktop"
+- Subheadline: "Snow. Rain. AI Storms. Across all your displays. $4.99 lifetime."
+- Single CTA button: **"Download Free Trial"**
+
+**Demo section:**
+- Three side-by-side GIFs: snow, rain, AI storm
+- Short description of each mode
+
+**Social proof section (fill in post-launch):**
+- Product Hunt badge, Reddit quotes, download count
+- "Used by X,XXX Mac users" (update as it grows)
+
+**Pricing section:**
+- One line: "$4.99 — One-time purchase. Works forever. No subscription."
+- "Buy License" button → LemonSqueezy checkout
+
+**Footer:**
+- Download link, support email, Twitter/X link
+
+**Conversion tip:** Research shows changing CTA from "Sign up" to "Try for free" improves conversion ~100%. Lead with the trial, not the purchase.
+
+#### Prepare Visual Assets
+
+You need four types of assets. These get reused across every channel (PH, Reddit, Twitter, landing page, blog pitches), so invest time getting them right once.
+
+**Asset checklist:**
+- **GIF clips** — 10–15 seconds each, one per weather mode (snow, rain, AI storm), plus one multi-display shot
+- **MP4 demo video** — 60–120 seconds, full walkthrough: launch app → toggle modes → adjust settings → multi-display
+- **Screenshots** — 4–6 clean stills showing each mode + the popover UI + multi-display
+- **Device mockups** — screenshots framed inside MacBook/Studio Display for landing page hero
+
+---
+
+#### How to Record GIF Clips
+
+**Recommended tool: CleanShot X ($29 one-time)**
+Best all-in-one for indie Mac devs — records GIFs and video, hides desktop icons during capture, includes annotation and instant sharing. This is what most indie Mac developers use.
+
+**Free alternative: Kap (open source)**
+Exports to GIF, MP4, WebM, or APNG. No watermark, no limitations. Good if you don't want to pay for CleanShot X.
+
+**Other options:** Gifox (precision region selection), GIPHY Capture (simple but limited), LICEcap (lightweight, ugly UI but functional).
+
+**Recording settings for marketing GIFs:**
+
+| Setting | Value | Why |
+|---------|-------|-----|
+| Frame rate | 15 fps | Smooth enough for particle animation, cuts file size ~50% vs 30 fps |
+| Duration | 10–15 seconds | Long enough to show wind gusts and variation, short enough to loop well |
+| Region | Crop to relevant area | A 800×600 crop is dramatically smaller than full 2560×1600 |
+| Loop | Seamless if possible | Weather effects should loop naturally — trim to a clean cycle point |
+
+**GIF optimization (critical for platform limits):**
+
+Use **gifski** (by ImageOptim team) for highest-quality GIF encoding. It produces noticeably better results than other encoders at the same file size.
+
+| Platform | Max GIF size | Target size |
+|----------|-------------|-------------|
+| Product Hunt | 3 MB (strict) | Under 2.5 MB |
+| Reddit | 100 MB (but aim low) | Under 8 MB |
+| Twitter/X | 15 MB desktop, 5 MB mobile | Under 4 MB |
+| Landing page | No limit, but affects load time | Under 5 MB (or use MP4 instead) |
+
+**If you can't hit 3 MB for Product Hunt:**
+- Reduce color palette from 256 to 128 colors (30–50% size reduction, slight dithering)
+- Crop tighter — show just the effect, not the full desktop
+- Drop to 12 fps
+- Use ezgif.com for online compression with preview
+- Consider using MP4 instead (85–95% smaller than GIF at same quality)
+
+---
+
+#### How to Record the Demo Video
+
+**Recommended tool: OBS Studio (free) or ScreenFlow ($149)**
+- OBS: Free, no watermark, unlimited recording. Steeper learning curve but unmatched flexibility.
+- ScreenFlow: Native Mac, built-in video editor, captures system audio. Best for polished tutorial-style videos.
+- QuickTime (built-in): Quick and dirty — good for raw footage you'll edit elsewhere.
+
+**Recording checklist:**
+1. Create a fresh macOS user account (or clean up your existing one)
+2. Hide desktop icons: `defaults write com.apple.finder CreateDesktop false && killall Finder`
+3. Set wallpaper to something that contrasts with weather effects (see wallpaper guide below)
+4. Hide unnecessary menu bar items
+5. Set system clock to 9:41 AM (Apple's convention for marketing screenshots — looks intentional)
+6. Close all other apps — no notification banners interrupting your recording
+7. Record at native Retina resolution (2x) for sharp output
+8. Show the popover UI being used — demonstrate settings changes in real-time
+
+**Demo video structure (60–120 seconds):**
+- 0:00 — Clean desktop, app running in menu bar, snow falling
+- 0:15 — Open popover, switch to rain mode (show instant transition)
+- 0:30 — Adjust particle count and wind (show customization)
+- 0:45 — Switch to AI storm mode (the wow moment)
+- 1:00 — Pull back to show multi-display (if applicable)
+- 1:15 — Quick flash of settings, close popover, end on a beautiful shot
+- No voiceover needed — add text captions or let the visuals speak
+
+---
+
+#### How to Take Screenshots
+
+**Recommended tool: CleanShot X or Shottr (free)**
+Both offer window capture with automatic drop shadows, transparent backgrounds, and a "Backdrop" tool that adds professional gradient backgrounds + rounded corners + padding.
+
+**Screenshot workflow:**
+1. Set up the weather effect you want to capture
+2. Capture the full window or region: `Cmd+Shift+4` (native) or CleanShot X hotkey
+3. Use CleanShot X's "Background" tool or Shottr's "Backdrop" to add a gradient background + shadow + rounded corners
+4. Export as PNG (lossless) for landing page, WebP for faster web loading
+
+**What to capture (6 shots minimum):**
+
+| Shot | Description | Use |
+|------|-------------|-----|
+| Snow hero | Full desktop with gentle snow on a dark wallpaper | Landing page hero, PH gallery |
+| Rain mood | Rain streaks with splashes on a moody wallpaper | Landing page demo section |
+| AI storm | Full glitch effects on a clean desktop | Landing page demo section, Twitter |
+| Multi-display | Weather spanning 2–3 monitors | Landing page, shows premium feel |
+| Popover UI | Menu bar popover with settings visible | PH gallery, Reddit post |
+| Before/after | Clean desktop → same desktop with weather | Landing page, shows the product's value |
+
+---
+
+#### Device Mockups
+
+Put your screenshots inside MacBook/iMac/Studio Display frames for the landing page hero and Product Hunt gallery. Bare screenshots look amateur; framed ones look professional.
+
+**Tools:**
+- **Rotato ($49)** — Best for 3D angled mockups. Drag in your screenshot, pick a device, adjust angle and lighting. Exports high-res PNG.
+- **shots.so (free)** — Browser-based, quick device frames with customizable backgrounds.
+- **MockUPhone (free)** — Simple device framing, supports MacBook and iMac.
+- **Figma templates** — Search "MacBook mockup" in Figma Community for free templates you can customize.
+
+**For wthrr:** A 3/4 angle MacBook Pro with snow falling across the screen, on a dark gradient background, is your landing page hero image.
+
+---
+
+#### Wallpaper Strategy (Important for a Transparent Overlay App)
+
+The wallpaper behind your weather effects is part of the marketing. Choose deliberately.
+
+**Best wallpapers for each mode:**
+
+| Mode | Wallpaper | Why |
+|------|-----------|-----|
+| Snow | Dark navy, deep forest, or night cityscape | White particles pop against dark backgrounds |
+| Rain | Moody gray gradient or overcast sky photo | Matches the rain vibe, streaks are visible |
+| AI storm | Solid black or very dark gradient | Neon glitch effects are most dramatic on dark backgrounds |
+| Multi-display hero shot | macOS default Sequoia wallpaper | Familiar to Mac users, shows the app in context |
+
+**Wallpapers to avoid:**
+- Busy patterns or photos with lots of detail — compete with particle effects
+- Very bright/white backgrounds — snow becomes invisible
+- Default macOS light wallpapers — low contrast with most effects
+
+**Pro tip:** Use a different wallpaper for each mode's GIF/screenshot. This makes your gallery look varied and shows the effects work in different contexts.
+
+---
+
+#### Platform-Specific Asset Versions
+
+You'll need different versions of the same content optimized for each platform:
+
+| Asset | Product Hunt | Reddit | Twitter/X | Landing Page |
+|-------|-------------|--------|-----------|-------------|
+| Hero GIF | Under 3 MB, square or 16:9 | Under 8 MB, any ratio | Under 4 MB, 16:9 | MP4 preferred (autoplay) |
+| Screenshots | 1270×760 gallery images | Inline in post body | 1600×900 for cards | 2x Retina, PNG or WebP |
+| Demo video | Link to YouTube | Link to YouTube | Upload native (under 2:20) | Embedded or YouTube |
+| Mockups | Not needed (raw screenshots better) | Not needed | Great for pinned tweet | Hero section, above the fold |
+
+**When to use MP4 instead of GIF:**
+- Landing page hero — MP4 is 85–95% smaller, autoplay + loop works in all browsers
+- A 5-second 1280×720 clip: ~2.3 MB as GIF vs ~370 KB as MP4
+- Twitter supports native video with autoplay — looks better than GIF
+- Use GIF only where the platform requires it (some Reddit clients, email)
+
+---
+
+#### Capture Workflow (Step by Step)
+
+**One afternoon, do this:**
+
+1. **Set up a clean recording environment**
+   - Fresh user account or hide desktop icons
+   - Pick your wallpapers (one per mode — dark for snow, moody for rain, black for AI storm)
+   - Hide menu bar clutter, set clock to 9:41
+
+2. **Record raw footage for each mode** (use CleanShot X or OBS)
+   - 30–60 seconds of each mode running at full quality
+   - Include one recording with the popover open, changing settings
+   - Include one multi-display recording if you have multiple monitors
+
+3. **Extract GIF clips** from the raw footage
+   - Trim to 10–15 second loops using CleanShot X or Kap
+   - Run through gifski for optimal compression
+   - Create platform-specific versions (tight crop for PH's 3 MB limit, wider for Reddit)
+
+4. **Take static screenshots** during the session
+   - Pause at the best-looking moments and capture with CleanShot X
+   - Apply Backdrop tool (gradient background + shadow + rounded corners)
+
+5. **Create device mockups** from your best screenshots
+   - Drop into Rotato or shots.so
+   - Export hero images for landing page
+
+6. **Compress everything**
+   - GIFs through gifski or ezgif.com
+   - PNGs through ImageOptim
+   - Videos through HandBrake (free) for web-optimized MP4
+
+**Total time:** 2–4 hours for a full set of marketing assets that covers every channel.
+
+#### Start Building in Public on Twitter/X
+- Post 3–5 times per week about development progress
+- Share short clips: "Added wind physics today" / "AI storm mode is getting weird (in a good way)"
+- Use hashtags: #buildinpublic #indiedev #macOS #swiftui
+- Engage with indie Mac dev community (Sindre Sorhus, Raycast team, Shottr dev)
+- Goal: 200–500 followers by launch day who are primed and excited
+
+#### Join Product Hunt Early
+- Create your Product Hunt account 6–8 weeks before launch
+- Become an active community member: upvote and comment on other Mac apps
+- PH's algorithm favors engaged community members, not drive-by launchers
+- Set up your product's "Coming Soon" page to collect followers
+
+#### Build an Email Waitlist
+- Add email capture to landing page: "Get notified when wthrr launches"
+- Target: 200–500 signups before launch
+- These people will be your Day 1 upvoters and buyers
+
+---
+
+### Phase 2: Launch Week (The Big Push)
+
+Execute these in sequence over 3–5 days for maximum compounding effect.
+
+#### Day 1: Product Hunt Launch
+
+**Timing:** Launch Saturday or Sunday at 12:01 AM PST. Weekends have fewer competing products — you need ~366 upvotes to hit #1 on Saturday vs ~633 on Monday.
+
+**Listing must include:**
+- Animated GIF as the hero media (not a static screenshot)
+- Clear one-line tagline: "Animated weather overlays for your Mac desktop"
+- Detailed description explaining all three modes, multi-display, customization
+- Link to YouTube demo video
+- "Maker" comment explaining why you built it (personal story converts)
+
+**Launch day actions:**
+- Email your waitlist: "We're live on Product Hunt!"
+- Post to Twitter: tag @ProductHunt, share your listing link
+- Respond to every Product Hunt comment within the first 2 hours (critical for algorithm)
+- DM friends/fellow indie devs to check it out (don't ask for upvotes explicitly — PH detects and penalizes this)
+
+**Realistic outcome:** A well-executed PH launch for a visual Mac utility can hit 300–1,000 upvotes, Top 5 of the day, and drive 2,000–5,000 visitors to your landing page.
+
+#### Day 2: Reddit Launch
+
+**Primary subreddits:**
+- **r/macapps** (300K+ members) — the single best subreddit for Mac utility launches
+- **r/macOS** (400K+) — broader audience, good for cross-posting a day later
+
+**Post format that works:**
+- Title: "I made a free menu bar app that adds animated snow, rain, and AI storms to your Mac desktop"
+- Body: 3–4 GIFs showing each mode, bullet points of features, link to download, transparent about pricing
+- Tone: first-person, authentic, "I built this because..." not "Introducing the revolutionary..."
+
+**What gets traction vs removed:**
+- ✅ "I made..." / "I built..." / "After 6 months of work..."
+- ❌ Marketing language, superlatives, "game-changing"
+- ✅ Engaging with every comment, answering questions, taking feature requests
+- ❌ Posting to 5+ subreddits on the same day (looks spammy)
+
+**Additional subreddits (stagger over the following week):**
+- r/sideproject — indie dev audience, good for the build story
+- r/indiehackers — fellow developers, potential for cross-promotion
+- r/unixporn or r/desktops — if your weather effects look stunning on custom setups
+
+**Realistic outcome:** A good r/macapps post can drive 40–200+ sales directly. One indie dev reported $5,000 in a week from Reddit alone.
+
+#### Day 3: Hacker News (Show HN)
+
+**Post title:** "Show HN: Animated weather overlays for macOS desktops"
+
+**What makes Show HN succeed for Mac utilities:**
+- Direct, factual language (no marketing speak — HN readers smell it instantly)
+- Mention the technical stack: SwiftUI, Metal/Canvas rendering, display-synced physics
+- Make the app trivially easy to try (free trial, no signup, just download the DMG)
+- Be prepared for technical questions about performance, CPU usage, multi-display handling
+
+**Realistic outcome:** A front-page Show HN can drive 5,000–15,000 visitors in 24 hours. Not every post makes the front page — but visual/novel apps have an advantage.
+
+#### Day 4–5: Follow-Up Content
+
+- Post a "Launch recap" thread on Twitter (numbers, lessons, what surprised you)
+- Thank Product Hunt and Reddit communities
+- Share any fun screenshots or user reactions
+
+---
+
+### Phase 3: Press & Directories (Weeks 2–4)
+
+#### Mac Blog Outreach
+
+Email these sites with a short pitch + GIF + download link:
+
+| Site | Why | How to Pitch |
+|------|-----|--------------|
+| **MacStories** | Most influential indie Mac reviewer | Email Federico/John, lead with the visual angle + technical craft |
+| **9to5Mac** | Broad Apple audience | "New indie Mac utility" angle, include PH ranking |
+| **MacWorld** | Software reviews section | Straightforward review request |
+| **The Sweet Setup** | Curated Mac app recommendations | Focus on the "delightful utility" angle |
+| **Club MacStories** | Newsletter for Mac enthusiasts | Mention if you got PH traction |
+
+**Pitch template:**
+> Subject: wthrr — animated weather overlays for macOS (just launched)
+>
+> Hi [name],
+>
+> I just launched wthrr, a menu bar app that renders animated snow, rain, and AI storm effects across all connected Mac displays. It hit [#X on Product Hunt / X upvotes on Reddit] this week.
+>
+> [Embedded GIF or link to 30-sec demo]
+>
+> It's $4.99 one-time, no subscription, no data collection. Free 14-day trial.
+>
+> Happy to share a complimentary license if you'd like to try it.
+>
+> [Your name]
+
+**Realistic outcome:** MacStories coverage alone can drive 2,000–5,000 visits. Most cold pitches go unanswered — follow up once after a week, then move on.
+
+#### Directory Listings (Free, Long-Tail Value)
+
+Submit to these — they're free and generate organic traffic over time:
+
+- **AlternativeTo.net** — add wthrr as an alternative to other weather/overlay apps
+- **MacMenuBar.com** — specialized directory of 1,300+ menu bar apps
+- **awesome-macos** (GitHub) — submit a PR to phmullins/awesome-macos and jaywcjlove/awesome-mac
+- **Product Hunt** collection pages — add to relevant collections (menu bar apps, macOS utilities)
+
+---
+
+### Phase 4: Ongoing Growth (Month 2+)
+
+#### Seasonal Marketing (Big Advantage for a Weather App)
+
+wthrr has a natural seasonal hook that most apps don't:
+
+| Season | Campaign | Channel |
+|--------|----------|---------|
+| **November** | "Snow season is here" — launch/relaunch push | Twitter, Reddit |
+| **December** | "Holiday desktop vibes" — gift-giving angle | Twitter, email to existing users to gift licenses |
+| **Spring** | "Rain mode for April showers" | Quick Reddit post, Twitter clip |
+| **Summer** | AI Storm mode push — "When it's too hot for real weather" | Fun angle for Twitter/Reddit |
+
+#### Version Updates as Marketing Events
+
+Each meaningful update is a reason to post again:
+
+- v1.1: Bug fixes (don't market this)
+- v1.2: New particle effects or mode → short Reddit post + Twitter thread
+- v1.5: Major feature (new weather mode? seasonal themes?) → mini Product Hunt launch + Reddit
+- v2.0: If big enough → full re-launch cycle (PH, Reddit, HN, press)
+
+#### SEO (Slow but Compounding)
+
+- Target long-tail keywords on your landing page: "animated weather Mac," "snow effect macOS," "rain overlay Mac desktop"
+- Write 2–3 blog posts on your site: "How I Built Multi-Display Weather Physics in SwiftUI," "Best Menu Bar Apps for macOS 2026"
+- Technical blog posts get linked from HN and dev communities → backlinks → SEO value
+- Over 6–12 months, organic search can become your largest traffic source
+
+#### Community Building (Optional, Low-Effort)
+
+- Create r/wthrr for users to share screenshots of their setups with weather effects
+- Accept feature requests publicly (GitHub Issues or a simple feedback form)
+- Monthly email to customers: new features, seasonal themes, what's coming
+
+---
+
+### Launch Week Revenue Expectations
+
+| Scenario | PH + Reddit + HN Traffic | Landing Page Conversion | Sales | Revenue |
+|----------|--------------------------|------------------------|-------|---------|
+| Conservative | 3,000 visitors | 3% trial, 30% convert | ~27 | ~$115 |
+| Moderate | 8,000 visitors | 5% trial, 40% convert | ~160 | ~$678 |
+| Strong (PH #1 + Reddit viral) | 20,000 visitors | 7% trial, 40% convert | ~560 | ~$2,375 |
+
+These are launch week only. Long-tail from directories, SEO, and word of mouth adds up over months.
+
+---
+
+### 90-Day Launch Calendar
+
+| Week | Action |
+|------|--------|
+| 1–2 | Landing page live, GIF/video assets created, LemonSqueezy product configured |
+| 3–4 | Start Twitter build-in-public posts, join Product Hunt community |
+| 5–6 | YouTube demo video published, email waitlist collecting signups |
+| 7–8 | Product Hunt "Coming Soon" page live, pitch drafted for Mac blogs |
+| 9–10 | Email MacStories, Macworld, Sweet Setup (give them early access + license) |
+| 11 | Final polish, prep Reddit post drafts, line up PH launch |
+| **12** | **LAUNCH WEEK: PH Saturday → Reddit Monday → HN Tuesday → Twitter daily** |
+| 13–14 | Follow up with press, submit to directories, post launch recap |
+| 15–16 | v1.1 bug fix release, collect testimonials, update landing page with social proof |
+
+---
+
+### What Makes wthrr Marketable
+
+Most indie Mac utilities struggle to create visual marketing content. wthrr doesn't have this problem:
+
+- **Every screenshot is a demo** — weather effects on a real desktop look interesting
+- **GIFs sell themselves** — 3 seconds of animated snow is more compelling than any copy
+- **Three distinct modes** — snow, rain, AI storm give you three different visual hooks
+- **Multi-display is impressive** — screenshots of weather spanning 2–3 monitors look premium
+- **Seasonal relevance** — you can re-market the same app every winter
+
+The marketing strategy is simple: **make it look cool, put it where Mac users hang out, and let the visuals do the selling.**
 
 ---
 
@@ -342,8 +730,8 @@ These assume direct traffic from Product Hunt, Reddit, Twitter/X, Hacker News po
 
 | Component | Solution | Cost |
 |-----------|----------|------|
-| Payment + license keys | LemonSqueezy | ~$0.75/sale |
-| Trial model | 14-day full-feature trial | $0 |
+| Payment + license keys | LemonSqueezy | ~$0.75/sale (~$4.24 net) |
+| Trial model | 14-day full trial → 10-min sessions | $0 |
 | License storage | macOS Keychain | $0 |
 | Code signing + notarization | Apple Developer ID | $99/year |
 | Auto-updates | Sparkle framework | $0 |

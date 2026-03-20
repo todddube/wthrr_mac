@@ -15,6 +15,7 @@ import SwiftUI
 struct ContentView: View {
     @Environment(WeatherSettings.self) private var settings
     @State private var screens: [NSScreen] = NSScreen.screens
+    private var liveWeather: LiveWeatherService { LiveWeatherService.shared }
 
     var body: some View {
         @Bindable var settings = settings
@@ -51,6 +52,61 @@ struct ContentView: View {
                 // MARK: Settings
                 VStack(spacing: 16) {
 
+                    // Live weather toggle
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle(isOn: $settings.liveWeatherEnabled) {
+                            HStack {
+                                Text("Live Weather")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(settings.liveWeatherEnabled ? "Auto" : "Manual")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .onChange(of: settings.liveWeatherEnabled) { _, enabled in
+                            if enabled { liveWeather.start() } else { liveWeather.stop() }
+                        }
+
+                        if settings.liveWeatherEnabled {
+                            HStack(spacing: 6) {
+                                if liveWeather.isLoading {
+                                    ProgressView().controlSize(.mini)
+                                } else if let err = liveWeather.errorMessage {
+                                    Image(systemName: "exclamationmark.triangle")
+                                        .font(.caption2)
+                                        .foregroundStyle(.orange)
+                                    Text(err)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                } else if !liveWeather.locationName.isEmpty {
+                                    Image(systemName: "location.fill")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                    Text(liveWeather.locationName)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Button {
+                                    liveWeather.refresh()
+                                } label: {
+                                    Image(systemName: "arrow.clockwise")
+                                        .font(.caption2)
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.secondary)
+                                .disabled(liveWeather.isLoading)
+                            }
+                            Text("Type and intensity are set automatically")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+
                     // Weather type picker
                     Picker("Weather", selection: $settings.weatherType) {
                         Text("Snow").tag(WeatherType.snow)
@@ -58,6 +114,7 @@ struct ContentView: View {
                         Text("AI Storm").tag(WeatherType.aiStorm)
                     }
                     .pickerStyle(.segmented)
+                    .disabled(settings.liveWeatherEnabled)
 
                     // Particle count
                     VStack(alignment: .leading, spacing: 4) {
@@ -75,6 +132,7 @@ struct ContentView: View {
                             set: { settings.flakeCount = Int($0) }
                         ), in: 20...400, step: 10)
                     }
+                    .disabled(settings.liveWeatherEnabled)
 
                     // Fall speed
                     VStack(alignment: .leading, spacing: 4) {
@@ -89,8 +147,23 @@ struct ContentView: View {
                         }
                         Slider(value: $settings.speedMultiplier, in: 0.25...3.0, step: 0.05)
                     }
+                    .disabled(settings.liveWeatherEnabled)
 
-                    // Wind strength
+                    // Particle opacity
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Opacity")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(settings.particleOpacityLabel)
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                        Slider(value: $settings.particleOpacity, in: 0.2...1.5, step: 0.05)
+                    }
+
+                    // Wind strength + direction
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text("Wind")
@@ -102,7 +175,18 @@ struct ContentView: View {
                                 .foregroundStyle(.secondary)
                         }
                         Slider(value: $settings.windStrength, in: 0.0...1.0, step: 0.05)
+
+                        if settings.windStrength > 0 {
+                            Picker("Direction", selection: $settings.windDirection) {
+                                Text("← Left").tag(WindDirection.left)
+                                Text("Natural").tag(WindDirection.natural)
+                                Text("Right →").tag(WindDirection.right)
+                            }
+                            .pickerStyle(.segmented)
+                            .font(.caption)
+                        }
                     }
+                    .disabled(settings.liveWeatherEnabled)
 
                     // Clouds toggle + size
                     VStack(alignment: .leading, spacing: 4) {
@@ -135,6 +219,17 @@ struct ContentView: View {
                                     .foregroundStyle(.secondary)
                             }
                             Slider(value: $settings.cloudSize, in: 0.5...1.5, step: 0.1)
+
+                            HStack {
+                                Text("Cloud Speed")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(settings.cloudSpeedLabel)
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                            Slider(value: $settings.cloudSpeed, in: 0.25...3.0, step: 0.05)
                         }
                     }
 
@@ -182,6 +277,17 @@ struct ContentView: View {
                                 Text("Random bolts flash across the screen")
                                     .font(.caption2)
                                     .foregroundStyle(.tertiary)
+
+                                HStack {
+                                    Text("Frequency")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                    Text(settings.lightningFrequencyLabel)
+                                        .font(.caption.monospacedDigit())
+                                        .foregroundStyle(.secondary)
+                                }
+                                Slider(value: $settings.lightningFrequency, in: 0.25...3.0, step: 0.05)
                             }
                         }
                     }
@@ -202,6 +308,29 @@ struct ContentView: View {
                                 get: { Double(settings.maxAccumulationHeight) },
                                 set: { settings.maxAccumulationHeight = Int($0) }
                             ), in: 20...300, step: 10)
+                        }
+                    }
+
+                    // Low Power mode
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle(isOn: $settings.lowPowerMode) {
+                            HStack {
+                                Text("Low Power")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(settings.lowPowerMode ? "On" : "Off")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+
+                        if settings.lowPowerMode {
+                            Text("Limits animation to ~30 fps to reduce CPU usage")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
                         }
                     }
 
@@ -292,6 +421,9 @@ struct ContentView: View {
         .frame(width: 260)
         .onAppear {
             screens = NSScreen.screens
+            if settings.liveWeatherEnabled && !liveWeather.isRunning {
+                liveWeather.start()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(
             for: NSApplication.didChangeScreenParametersNotification)

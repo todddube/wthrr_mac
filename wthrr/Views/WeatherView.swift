@@ -37,6 +37,7 @@ struct WeatherView: View {
                     )
                 }
 
+                let pOpacity = settings.particleOpacity
                 switch settings.weatherType {
                 case .rain:
                     RainRenderer.draw(
@@ -47,7 +48,8 @@ struct WeatherView: View {
                         splashes: model.splashes,
                         puddles: model.puddles,
                         windVelocity: model.currentWindVelocity,
-                        bolt: model.activeBolt
+                        bolt: model.activeBolt,
+                        particleOpacity: pOpacity
                     )
                 case .aiStorm:
                     AIStormRenderer.draw(
@@ -59,7 +61,8 @@ struct WeatherView: View {
                         dataBolts: model.dataBolts,
                         corruptionPatches: model.corruptionPatches,
                         alienShips: model.alienShips,
-                        screenFractures: model.screenFractures
+                        screenFractures: model.screenFractures,
+                        particleOpacity: pOpacity
                     )
                 case .snow:
                     SnowRenderer.draw(
@@ -70,7 +73,8 @@ struct WeatherView: View {
                         accumulationMap: model.accumulationMap,
                         baselineMap: model.baselineMap,
                         accumulationEnabled: settings.accumulationEnabled,
-                        columnWidth: model.columnWidth
+                        columnWidth: model.columnWidth,
+                        particleOpacity: pOpacity
                     )
                 }
             }

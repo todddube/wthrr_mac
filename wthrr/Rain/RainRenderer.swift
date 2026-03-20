@@ -30,7 +30,8 @@ enum RainRenderer {
         splashes: [Splash],
         puddles: [Puddle],
         windVelocity: CGFloat,
-        bolt: LightningBolt? = nil
+        bolt: LightningBolt? = nil,
+        particleOpacity: Double = 1.0
     ) {
         let rainColor: Color = isDark
             ? Color(red: 0.78, green: 0.88, blue: 1.0)
@@ -49,7 +50,7 @@ enum RainRenderer {
 
         drawPuddles(context: context, size: size, isDark: isDark, puddles: puddles)
         drawStreaks(context: context, particles: particles, windVelocity: windVelocity,
-                    rainColor: rainColor)
+                    rainColor: rainColor, particleOpacity: particleOpacity)
         drawSplashes(context: context, splashes: splashes, splashColor: splashColor)
 
         // Lightning bolt on top of everything
@@ -138,7 +139,8 @@ enum RainRenderer {
         context: GraphicsContext,
         particles: [Particle],
         windVelocity: CGFloat,
-        rainColor: Color
+        rainColor: Color,
+        particleOpacity: Double
     ) {
         let maxTiltDeg: CGFloat = 25
         let tiltAngle = CGFloat(atan2(windVelocity * 0.015, 1.0))
@@ -156,7 +158,7 @@ enum RainRenderer {
             path.addLine(to: bottom)
 
             var ctx = context
-            ctx.opacity = drop.opacity
+            ctx.opacity = drop.opacity * particleOpacity
             ctx.stroke(path, with: .color(rainColor),
                        style: StrokeStyle(lineWidth: drop.size * 1.5, lineCap: .round))
         }

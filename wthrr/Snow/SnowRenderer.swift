@@ -30,9 +30,10 @@ enum SnowRenderer {
         accumulationMap: [CGFloat],
         baselineMap: [CGFloat],
         accumulationEnabled: Bool,
-        columnWidth: CGFloat
+        columnWidth: CGFloat,
+        particleOpacity: Double = 1.0
     ) {
-        drawFlakes(context: context, isDark: isDark, particles: particles)
+        drawFlakes(context: context, isDark: isDark, particles: particles, particleOpacity: particleOpacity)
         drawDrift(
             context: context, size: size, isDark: isDark,
             accumulationMap: accumulationMap, baselineMap: baselineMap,
@@ -47,7 +48,8 @@ enum SnowRenderer {
     private static func drawFlakes(
         context: GraphicsContext,
         isDark: Bool,
-        particles: [Particle]
+        particles: [Particle],
+        particleOpacity: Double
     ) {
         for flake in particles {
             let flakeColor: Color = isDark
@@ -55,12 +57,12 @@ enum SnowRenderer {
                 : Color(red: 0.88, green: 0.92 - flake.tint * 0.04, blue: 0.98)
 
             var ctx = context
-            ctx.opacity = flake.opacity
+            ctx.opacity = flake.opacity * particleOpacity
 
             // Light-mode shadow pass for contrast against bright wallpapers
             if !isDark {
                 var shadowCtx = context
-                shadowCtx.opacity = flake.opacity * 0.18
+                shadowCtx.opacity = flake.opacity * particleOpacity * 0.18
                 let sr = flake.size * 1.15
                 let shadowRect = CGRect(x: flake.x - sr + 0.7, y: flake.y - sr + 0.9,
                                         width: sr * 2, height: sr * 2)

@@ -61,7 +61,8 @@ enum AIStormRenderer {
         dataBolts: [DataBolt],
         corruptionPatches: [CorruptionPatch],
         alienShips: [AlienShip] = [],
-        screenFractures: [ScreenFracture] = []
+        screenFractures: [ScreenFracture] = [],
+        particleOpacity: Double = 1.0
     ) {
         // Screen tint flash from data bolts and fracture impacts
         for bolt in dataBolts where bolt.flashOpacity > 0.001 {
@@ -79,7 +80,7 @@ enum AIStormRenderer {
         drawScreenFractures(context: context, fractures: screenFractures)
         drawScanLines(context: context, size: size, scanLines: scanLines)
         drawCorruptionPatches(context: context, patches: corruptionPatches)
-        drawGlitchParticles(context: context, particles: particles, isDark: isDark)
+        drawGlitchParticles(context: context, particles: particles, isDark: isDark, particleOpacity: particleOpacity)
         drawAlienShips(context: context, ships: alienShips)
         drawDataBolts(context: context, bolts: dataBolts)
     }
@@ -92,16 +93,17 @@ enum AIStormRenderer {
     private static func drawGlitchParticles(
         context: GraphicsContext,
         particles: [Particle],
-        isDark: Bool
+        isDark: Bool,
+        particleOpacity: Double
     ) {
         for p in particles {
             let neonColor = NeonPalette.color(for: p.tint)
             var ctx = context
-            ctx.opacity = p.opacity
+            ctx.opacity = p.opacity * particleOpacity
 
             // Glow pass — larger, softer, same colour
             var glowCtx = context
-            glowCtx.opacity = p.opacity * 0.3
+            glowCtx.opacity = p.opacity * particleOpacity * 0.3
             let glowR = p.size * 2.5
             let glowRect = CGRect(x: p.x - glowR, y: p.y - glowR,
                                   width: glowR * 2, height: glowR * 2)

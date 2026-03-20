@@ -23,6 +23,15 @@ enum DisplayMode: String, CaseIterable {
     case selected = "selected"  // Show weather only on user-chosen displays
 }
 
+// MARK: - Wind direction
+
+/// Biases the wind to always blow in a fixed horizontal direction.
+enum WindDirection: String, CaseIterable {
+    case left    = "left"     // Wind always blows left
+    case natural = "natural"  // Wind direction varies naturally
+    case right   = "right"    // Wind always blows right
+}
+
 // MARK: - Weather settings
 
 /// Observable singleton that holds all weather simulation settings.
@@ -69,6 +78,11 @@ class WeatherSettings {
         didSet { UserDefaults.standard.set(windStrength, forKey: "windStrength") }
     }
 
+    /// Biases wind to blow in a fixed direction. Natural lets the simulation vary freely.
+    var windDirection: WindDirection {
+        didSet { UserDefaults.standard.set(windDirection.rawValue, forKey: "windDirection") }
+    }
+
     /// When true, snow accumulates at the screen bottom or rain forms puddles.
     var accumulationEnabled: Bool {
         didSet { UserDefaults.standard.set(accumulationEnabled, forKey: "accumulationEnabled") }
@@ -86,6 +100,34 @@ class WeatherSettings {
         didSet { UserDefaults.standard.set(lightningEnabled, forKey: "lightningEnabled") }
     }
 
+    /// How often lightning strikes relative to the default 8–25 s interval.
+    /// Range: 0.25 (rare) – 3.0 (frequent). Default 1.0.
+    var lightningFrequency: Double {
+        didSet { UserDefaults.standard.set(lightningFrequency, forKey: "lightningFrequency") }
+    }
+
+    /// Global opacity multiplier applied to all particles. Range: 0.2 (ghost) – 1.5 (vivid).
+    var particleOpacity: Double {
+        didSet { UserDefaults.standard.set(particleOpacity, forKey: "particleOpacity") }
+    }
+
+    /// When true, limits animation to ~30 fps to reduce CPU usage.
+    var lowPowerMode: Bool {
+        didSet { UserDefaults.standard.set(lowPowerMode, forKey: "lowPowerMode") }
+    }
+
+    // MARK: Live weather
+
+    /// When true, Open-Meteo pulls real conditions and auto-applies weather type + intensity.
+    /// Manual controls are disabled while this is active.
+    var liveWeatherEnabled: Bool {
+        didSet { UserDefaults.standard.set(liveWeatherEnabled, forKey: "liveWeatherEnabled") }
+    }
+
+    /// Real temperature string set by LiveWeatherService after each fetch.
+    /// Not persisted — re-fetched on next launch if live mode is on.
+    var liveTemperatureText: String?
+
     // MARK: Clouds
 
     /// When true, translucent clouds drift across the top of the screen.
@@ -96,6 +138,11 @@ class WeatherSettings {
     /// Multiplier for cloud size. Range: 0.5 (small) - 1.5 (large, capped internally).
     var cloudSize: Double {
         didSet { UserDefaults.standard.set(cloudSize, forKey: "cloudSize") }
+    }
+
+    /// Multiplier for cloud drift speed. Range: 0.25 (glacial) – 3.0 (stormy). Default 1.0.
+    var cloudSpeed: Double {
+        didSet { UserDefaults.standard.set(cloudSpeed, forKey: "cloudSpeed") }
     }
 
     // MARK: Display selection
@@ -135,6 +182,9 @@ class WeatherSettings {
         // UserDefaults returns 0.0 for a missing key, so treat 0 as "not set" -> default 0.5
         windStrength = UserDefaults.standard.object(forKey: "windStrength") != nil ? savedWind : 0.5
 
+        let savedWindDir = UserDefaults.standard.string(forKey: "windDirection") ?? ""
+        windDirection = WindDirection(rawValue: savedWindDir) ?? .natural
+
         accumulationEnabled = UserDefaults.standard.object(forKey: "accumulationEnabled") != nil
             ? UserDefaults.standard.bool(forKey: "accumulationEnabled")
             : false
@@ -146,12 +196,29 @@ class WeatherSettings {
             ? UserDefaults.standard.bool(forKey: "lightningEnabled")
             : false
 
+        let savedLightFreq = UserDefaults.standard.double(forKey: "lightningFrequency")
+        lightningFrequency = savedLightFreq > 0 ? savedLightFreq : 1.0
+
+        let savedOpacity = UserDefaults.standard.double(forKey: "particleOpacity")
+        particleOpacity = savedOpacity > 0 ? savedOpacity : 1.0
+
+        lowPowerMode = UserDefaults.standard.object(forKey: "lowPowerMode") != nil
+            ? UserDefaults.standard.bool(forKey: "lowPowerMode")
+            : false
+
+        liveWeatherEnabled = UserDefaults.standard.object(forKey: "liveWeatherEnabled") != nil
+            ? UserDefaults.standard.bool(forKey: "liveWeatherEnabled")
+            : false
+
         cloudsEnabled = UserDefaults.standard.object(forKey: "cloudsEnabled") != nil
             ? UserDefaults.standard.bool(forKey: "cloudsEnabled")
             : false
 
         let savedCloudSize = UserDefaults.standard.double(forKey: "cloudSize")
         cloudSize = savedCloudSize > 0 ? savedCloudSize : 1.0
+
+        let savedCloudSpeed = UserDefaults.standard.double(forKey: "cloudSpeed")
+        cloudSpeed = savedCloudSpeed > 0 ? savedCloudSpeed : 1.0
 
         let savedMode = UserDefaults.standard.string(forKey: "displayMode") ?? ""
         displayMode = DisplayMode(rawValue: savedMode) ?? .all
@@ -179,8 +246,10 @@ class WeatherSettings {
         }
     }
 
-    /// Temperature string appropriate for the current weather type.
+    /// Temperature string shown in the header.
+    /// Returns the live-fetched value when live mode is on; falls back to decorative defaults.
     var temperatureText: String {
+        if liveWeatherEnabled, let live = liveTemperatureText { return live }
         switch weatherType {
         case .rain:    return "52\u{00B0}F"
         case .aiStorm: return "??\u{00B0}?"
@@ -241,6 +310,37 @@ class WeatherSettings {
         case .rain:    return "Re-randomise Drops"
         case .aiStorm: return "Re-randomise Glitches"
         case .snow:    return "Re-randomise Flakes"
+        }
+    }
+
+    /// Human-readable label for the current cloud speed setting.
+    var cloudSpeedLabel: String {
+        switch cloudSpeed {
+        case ..<0.6:  return "Glacial"
+        case ..<1.2:  return "Drifting"
+        case ..<2.0:  return "Breezy"
+        default:      return "Stormy"
+        }
+    }
+
+    /// Human-readable label for the current lightning frequency setting.
+    var lightningFrequencyLabel: String {
+        switch lightningFrequency {
+        case ..<0.6:  return "Rare"
+        case ..<1.4:  return "Occasional"
+        case ..<2.2:  return "Frequent"
+        default:      return "Storm"
+        }
+    }
+
+    /// Human-readable label for the current particle opacity setting.
+    var particleOpacityLabel: String {
+        switch particleOpacity {
+        case ..<0.45: return "Ghost"
+        case ..<0.85: return "Faint"
+        case ..<1.15: return "Normal"
+        case ..<1.35: return "Bold"
+        default:      return "Vivid"
         }
     }
 
