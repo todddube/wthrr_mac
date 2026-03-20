@@ -31,7 +31,7 @@ struct WeatherPreset: Codable, Identifiable, Equatable {
     var isBuiltIn: Bool { Self.builtInNames.contains(name) }
 
     private static let builtInNames: Set<String> = [
-        "Blizzard", "Light Flurry", "Spring Rain", "Monsoon", "Thunderstorm", "Foggy Morning", "Glitch Overload", "Digital Ghost"
+        "Blizzard", "Light Flurry", "Spring Rain", "Monsoon", "Thunderstorm", "Foggy Morning", "Glitch Overload", "Digital Ghost", "Aurora Borealis"
     ]
 }
 
@@ -171,9 +171,25 @@ extension WeatherPreset {
         cloudSpeed: 1.0
     )
 
+    static let auroraBorealis = WeatherPreset(
+        name: "Aurora Borealis",
+        weatherType: .aurora,
+        flakeCount: 20,
+        speedMultiplier: 0.3,
+        windStrength: 0.05,
+        windDirection: .natural,
+        particleOpacity: 0.6,
+        accumulationEnabled: false,
+        cloudsEnabled: false,
+        lightningEnabled: false,
+        lightningFrequency: 1.0,
+        cloudSize: 1.0,
+        cloudSpeed: 0.5
+    )
+
     /// All built-in presets.
     static let builtIns: [WeatherPreset] = [
-        .blizzard, .lightFlurry, .springRain, .monsoon, .thunderstorm, .foggyMorning, .glitchOverload, .digitalGhost
+        .blizzard, .lightFlurry, .springRain, .monsoon, .thunderstorm, .foggyMorning, .glitchOverload, .digitalGhost, .auroraBorealis
     ]
 }
 

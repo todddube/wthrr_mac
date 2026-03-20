@@ -74,6 +74,14 @@ struct SplashView: View {
                 ("display.2", "Multi-display support"),
                 ("slider.horizontal.3", "Fully configurable"),
             ]
+        case .aurora:
+            return [
+                ("aqi.medium", "Rippling aurora bands"),
+                ("paintpalette.fill", "Green, purple & teal"),
+                ("sparkles", "Mesmerizing slow animation"),
+                ("display.2", "Multi-display support"),
+                ("slider.horizontal.3", "Fully configurable"),
+            ]
         }
     }
 

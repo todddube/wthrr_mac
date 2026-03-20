@@ -35,16 +35,19 @@ struct ContentView: View {
             VStack(spacing: 0) {
 
                 // ── Header ──────────────────────────────────
-                headerSection
-                    .padding(.top, 16)
-                    .padding(.horizontal, 16)
+                HStack(spacing: 12) {
+                    // Weather icon + info (left)
+                    headerSection
 
-                // Pause + shortcut
-                pauseRow
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
+                    Spacer()
 
-                Divider().padding(.vertical, 10)
+                    // Pause + shortcut (right)
+                    pauseRow
+                }
+                .padding(.top, 14)
+                .padding(.horizontal, 20)
+
+                Divider().padding(.vertical, 8)
 
                 // ── Always-visible controls ─────────────────
                 VStack(spacing: 12) {
@@ -65,7 +68,7 @@ struct ContentView: View {
 
                     intensityQuickTaps
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 20)
 
                 Divider().padding(.vertical, 10)
 
@@ -130,7 +133,7 @@ struct ContentView: View {
                         behaviorContent
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 20)
 
                 Divider().padding(.vertical, 10)
 
@@ -144,7 +147,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.regular)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 20)
 
                 Divider().padding(.vertical, 10)
 
@@ -170,8 +173,8 @@ struct ContentView: View {
 
             } // VStack
         } // ScrollView
-        .frame(width: 280)
-        .frame(maxHeight: 700)
+        .frame(width: 340)
+        .frame(maxHeight: 720)
         .background(.regularMaterial)
         .onAppear {
             screens = NSScreen.screens
@@ -196,59 +199,52 @@ struct ContentView: View {
     // MARK: - Header
 
     private var headerSection: some View {
-        VStack(spacing: 8) {
+        HStack(spacing: 10) {
             Image(systemName: settings.isPaused ? "pause.circle" : settings.weatherIcon)
-                .font(.system(size: 44))
+                .font(.system(size: 36))
                 .symbolRenderingMode(.multicolor)
 
-            Text(settings.temperatureText)
-                .font(.system(size: 34, weight: .light, design: .rounded))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(settings.temperatureText)
+                    .font(.system(size: 26, weight: .light, design: .rounded))
 
-            Text(settings.isPaused ? "Paused" : settings.weatherLabel)
-                .font(.headline)
-                .foregroundStyle(.secondary)
+                Text(settings.isPaused ? "Paused" : settings.weatherLabel)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
     // MARK: - Pause row
 
     private var pauseRow: some View {
-        VStack(spacing: 6) {
-            // Pause / Resume button
+        VStack(spacing: 4) {
             Button {
                 settings.togglePause()
             } label: {
                 Label(settings.isPaused ? "Resume" : "Pause",
                       systemImage: settings.isPaused ? "play.fill" : "pause.fill")
                     .font(.caption.weight(.medium))
-                    .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
 
-            // Shortcut — centered below the button
-            VStack(spacing: 2) {
-                Text("Shortcut")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-
-                ShortcutBadge(
-                    binding: settings.pauseHotkey,
-                    isRecording: $isRecordingHotkey,
-                    pendingHotkey: $pendingHotkey,
-                    onAccept: {
-                        if let hotkey = pendingHotkey {
-                            settings.pauseHotkey = hotkey
-                        }
-                        pendingHotkey = nil
-                        isRecordingHotkey = false
-                    },
-                    onCancel: {
-                        pendingHotkey = nil
-                        isRecordingHotkey = false
+            ShortcutBadge(
+                binding: settings.pauseHotkey,
+                isRecording: $isRecordingHotkey,
+                pendingHotkey: $pendingHotkey,
+                onAccept: {
+                    if let hotkey = pendingHotkey {
+                        settings.pauseHotkey = hotkey
                     }
-                )
-            }
+                    pendingHotkey = nil
+                    isRecordingHotkey = false
+                },
+                onCancel: {
+                    pendingHotkey = nil
+                    isRecordingHotkey = false
+                }
+            )
         }
     }
 
@@ -436,6 +432,13 @@ struct ContentView: View {
                 .pickerStyle(.segmented)
                 .font(.caption)
             }
+
+            sliderRow(label: "Fall Angle", value: "\(Int(settings.windAngle))\u{00B0}") {
+                Slider(value: Binding(
+                    get: { settings.windAngle },
+                    set: { settings.windAngle = $0 }
+                ), in: -45...45, step: 1)
+            }
         }
         .disabled(settings.liveWeatherEnabled)
     }
@@ -475,6 +478,12 @@ struct ContentView: View {
                     }
                     sliderRow(label: "Speed", value: settings.cloudSpeedLabel) {
                         Slider(value: $settings.cloudSpeed, in: 0.25...3.0, step: 0.05)
+                    }
+                    sliderRow(label: "Cloud Opacity", value: cloudOpacityLabel) {
+                        Slider(value: Binding(
+                            get: { settings.cloudOpacity },
+                            set: { settings.cloudOpacity = $0 }
+                        ), in: 0.3...2.0, step: 0.05)
                     }
                 }
             }
@@ -578,6 +587,8 @@ struct ContentView: View {
                 }
             case .fog:
                 colorSlider(label: "Fog Tint", hue: $settings.fogTintHue)
+            case .aurora:
+                colorSlider(label: "Aurora Tint", hue: $settings.fogTintHue)
             }
         }
     }
@@ -731,6 +742,26 @@ struct ContentView: View {
                 }
             }
 
+            // Snow melt rate (snow only)
+            if settings.weatherType == .snow {
+                sliderRow(label: "Melt Rate", value: snowMeltLabel) {
+                    Slider(value: Binding(
+                        get: { settings.snowMeltRate },
+                        set: { settings.snowMeltRate = $0 }
+                    ), in: 0.02...0.2, step: 0.01)
+                }
+            }
+
+            // AI Storm density (AI storm only)
+            if settings.weatherType == .aiStorm {
+                sliderRow(label: "Effect Density", value: aiStormDensityLabel) {
+                    Slider(value: Binding(
+                        get: { settings.aiStormDensity },
+                        set: { settings.aiStormDensity = $0 }
+                    ), in: 0.25...3.0, step: 0.05)
+                }
+            }
+
             Divider()
 
             // Low Power mode
@@ -880,6 +911,34 @@ struct ContentView: View {
         case ..<0.75: return "Gusty"
         case ..<0.9:  return "Gale"
         default:      return "Storm"
+        }
+    }
+
+    private var cloudOpacityLabel: String {
+        switch settings.cloudOpacity {
+        case ..<0.5:  return "Faint"
+        case ..<0.9:  return "Light"
+        case ..<1.2:  return "Normal"
+        case ..<1.6:  return "Thick"
+        default:      return "Dense"
+        }
+    }
+
+    private var snowMeltLabel: String {
+        switch settings.snowMeltRate {
+        case ..<0.04: return "Slow"
+        case ..<0.08: return "Normal"
+        case ..<0.14: return "Fast"
+        default:      return "Rapid"
+        }
+    }
+
+    private var aiStormDensityLabel: String {
+        switch settings.aiStormDensity {
+        case ..<0.5:  return "Sparse"
+        case ..<1.0:  return "Normal"
+        case ..<2.0:  return "Dense"
+        default:      return "Chaotic"
         }
     }
 }
@@ -1096,6 +1155,7 @@ struct PresetPill: View {
         case .thunderstorm: return "cloud.bolt.rain"
         case .fog:          return "cloud.fog"
         case .aiStorm:      return "bolt"
+        case .aurora:       return "aqi.medium"
         }
     }
 }

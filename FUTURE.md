@@ -1,120 +1,74 @@
-# FUTURE.md — wthrr Roadmap & Feature Ideas
+# FUTURE.md — wthrr Roadmap
 
-Captured from brainstorming session. Items are grouped by theme; see CLAUDE.md for architecture context.
-
----
-
-## Must-Have / High Impact
-
-### ~~Preset System~~ ✅ Implemented
-Save and load named configurations. Ship with built-in presets:
-- ~~*Blizzard*, *Light Flurry*, *Spring Rain*, *Monsoon*, *Glitch Overload*, *Digital Ghost*~~ ✅
-- ~~User-saveable presets with custom names~~ ✅
-- ~~Import/export as JSON for sharing between machines~~ ✅
-
-### ~~Seasonal / Time-of-Day Awareness~~ ✅ Implemented
-- ~~Automatically switch to snow in winter, rain in spring, etc. based on system date~~ ✅
-- ~~Adjust particle opacity subtly based on system clock (dimmer at night)~~ ✅
-Toggle in Behavior section. Winter→Snow, Spring→Rain, Summer→Thunderstorm, Autumn→Fog. Night dimming 10pm-5am.
-
-### ~~Color Theming~~ ✅ Implemented
-- ~~**Snow**: tint color picker (cool blue, warm yellow for golden hour, etc.)~~ ✅
-- ~~**Rain**: streak color (gray, blue-green)~~ ✅
-- ~~**AI Storm**: swappable neon palette (cyberpunk cyan, synthwave purple, matrix green)~~ ✅
-Hue sliders for snow/rain/fog with "Default" reset. AI Storm has 4 named palettes (Cyberpunk, Synthwave, Matrix, Inferno).
+See [README.md](README.md) for the full list of currently implemented features.
 
 ---
 
-## Polished UX Wins
+## Completed Features
 
-### ~~Global Pause / Resume Hotkey~~ ✅ Implemented
-~~User-configurable global keyboard shortcut to freeze/resume all effects instantly.~~
-~~Essential for screencasts, video calls, and presentations.~~
-~~Menu bar icon should reflect paused state visually.~~
-Global hotkey: Cmd+Shift+P. Menu bar icon shows pause state. Also in right-click context menu.
+All items below have been implemented and are in the current codebase.
 
-### ~~Pause Button in Settings~~ ✅ Implemented
-~~Single button to freeze all animations without quitting. Complements the global hotkey.~~
+- **Preset System** — 9 built-in presets, user-saveable presets, JSON import/export
+- **Seasonal / Time-of-Day Awareness** — auto-switch by month, night dimming 10pm-5am
+- **Color Theming** — hue sliders for snow/rain/fog, 4 AI Storm palettes (Cyberpunk, Synthwave, Matrix, Inferno)
+- **Global Pause / Resume Hotkey** — customizable shortcut (default Cmd+Shift+P), menu bar icon reflects state
+- **Pause Button in Settings** — centered below weather summary
+- **Intensity Quick-Tap Presets** — Light / Medium / Heavy buttons
+- **Thunderstorm Mode** — composite rain + forced lightning + forced clouds
+- **Fog / Mist Effect** — drifting gradient bands + soft wisp particles
+- **Aurora Borealis** — rippling vertical color bands, pure gradient animation
+- **Onboarding Flow** — 3-step first-launch walkthrough
+- **"What's New" on Update** — version-gated changelog screen
+- **Animated Menu Bar Icon** — 3-frame animation per weather type, pauses when effects are paused
+- **Tuning Knobs** — snow melt rate, AI Storm density, cloud opacity, wind angle
+- **Collapsible Settings Sections** — persisted expand/collapse state, summary badges
+- **macOS Vibrancy** — .regularMaterial background on settings popover
+
+---
+
+## Remaining Ideas
 
 ### Per-Display Settings
 Different weather type on different monitors simultaneously.
 Snow on the main display, rain on the secondary — strong visual wow factor for multi-display users.
-
-### ~~Intensity Quick-Tap Presets~~ ✅ Implemented
-~~Three tap targets below the sliders: **Light · Medium · Heavy**~~
-~~Instantly sets amount + speed to sensible values. Faster than sliders for most users.~~
-Sets amount, speed, wind, and opacity. Active intensity is highlighted.
-
----
-
-## Visual / Effect Upgrades
-
-### ~~Thunderstorm Mode~~ ✅ Implemented
-~~Composite weather type layering rain + lightning + dark cloud overlay + screen flashes.~~
-~~Reuses existing renderers — mostly a settings preset + UI label.~~
-New WeatherType. Uses RainRenderer + forced lightning + forced clouds. Built-in "Thunderstorm" preset.
-
-### ~~Fog / Mist Effect~~ ✅ Implemented
-~~Slow-drifting translucent gradient bands across the screen.~~
-~~Very subtle, beautiful on dark wallpapers. Low physics complexity.~~
-New WeatherType with FogRenderer + FogParticleFactory. Drifting gradient bands + blurred wisp particles. Built-in "Foggy Morning" preset.
-
-### Aurora Borealis
-Slow rippling vertical bands of color (green / purple / teal) across the full screen.
-Zero particle physics — purely canvas gradient animation. Would be visually unique among menu bar apps.
+**Effort: High** — requires per-screen WeatherSettings architecture.
 
 ### Screen Frost (Snow Mode)
 Ice crystal formations that slowly creep inward from screen edges at high accumulation levels.
 Pure canvas path drawing, no physics required. Pairs naturally with the existing accumulation system.
 
----
-
-## App Store / Distribution Polish
-
-### ~~Onboarding Flow~~ ✅ Implemented
-~~First-launch walkthrough: pick a weather style, set intensity, done in 3 taps.~~
-~~Reduces friction for new users and showcases the visual range of the app immediately.~~
-3-step flow: Welcome → Pick Weather (5 types) → Set Intensity (Light/Medium/Heavy). Gated by UserDefaults.
-
-### Animated Menu Bar Icon
-Extend the existing icon sync so the icon animates subtly:
-- Snowflake rotates slowly (2–3 frame template image sequence)
-- Lightning bolt pulses during AI Storm
-- Raindrop falls and loops
-
-### ~~"What's New" on Update~~ ✅ Implemented
-~~A lightweight version of the splash screen that appears once after an update,~~
-~~showing a brief changelog bullet or two. Version-gated by `CFBundleVersion`.~~
-WhatsNewView with animated changelog entries. Version-gated by build number. Updates entries array each release.
-
----
-
-## AI Storm Tuning Knobs
-All currently hardcoded; candidates for future sliders:
-- Data bolt spawn rate (currently 3–10 sec interval)
-- Corruption patch density (currently 0.3–1.5 sec when enabled)
-- Screen fracture interval (currently 5–15 sec)
-- Alien ship count (currently 2–4, 0.1% spawn chance)
-- Effect Density slider grouping all of the above
-
-## Rain / Snow Behavior Knobs
-- Snow melt rate (currently 0.08/frame hardcoded)
+### Additional Tuning Knobs
 - Puddle ripple speed (currently 40 pts/sec hardcoded)
 - Puddle growth rate per raindrop (currently 0.025 height/hit hardcoded)
-- Lightning bolt duration (currently 0.30–0.45 sec hardcoded)
-- Accumulation Rate slider
+- Lightning bolt duration (currently 0.30-0.45 sec hardcoded)
+- Accumulation rate slider
+- Per-cloud speed variance
 
-## Cloud Behavior
-- Per-cloud speed variance (currently random 12–40 pts/s with no user control)
-- Cloud opacity independent of size
-
-## Wind
-- Wind angle control (diagonal fall instead of purely horizontal drift)
-- Wind gust visual indicator in the UI
+### Performance
+- Adaptive quality: reduce particle count automatically when CPU > threshold
+- Offscreen particle culling
+- Battery % threshold to trigger Low Power mode automatically
 
 ---
 
-## Performance
-- Adaptive quality: reduce particle count automatically when CPU > threshold
-- Offscreen particle culling
-- Battery % threshold to trigger Low Power mode automatically (not just system toggle)
+## Monetization
+
+See [specs_money.md](specs_money.md) for the full monetization plan including:
+
+- **$4.99 one-time license** via LemonSqueezy
+- **14-day full trial** then 10-minute sessions
+- **LicenseManager** with Keychain storage
+- **Sparkle auto-updates** for direct distribution
+- **Code signing + notarization** ($99/year Apple Developer Program)
+- **Marketing plan** with Product Hunt, Reddit, Hacker News launch strategy
+- **90-day launch calendar**
+
+### Implementation Phases (from specs_money.md)
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 1 | LicenseManager (Keychain, API validation) | Not started |
+| 2 | Trial + session timer logic | Not started |
+| 3 | License prompt UI | Not started |
+| 4 | LemonSqueezy account setup | Not started |
+| 5 | Polish (offline handling, error states) | Not started |

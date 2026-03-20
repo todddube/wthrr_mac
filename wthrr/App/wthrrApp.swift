@@ -37,6 +37,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
     private var splashWindow: NSWindow?
+    private var iconAnimationTimer: Timer?
+    private var iconAnimationFrame: Int = 0
     /// True when the splash was triggered manually via the settings button,
     /// meaning menu-bar interactions should NOT auto-dismiss it.
     private var splashIsManual = false
@@ -93,6 +95,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         updateStatusItemIcon()
         setupGlobalHotkey()
+        startIconAnimation()
 
         // Clean SIGTERM → NSApp.terminate so applicationWillTerminate fires.
         signal(SIGTERM, SIG_IGN)
@@ -114,7 +117,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = item
 
         let p = NSPopover()
-        p.contentSize   = NSSize(width: 300, height: 620)
+        p.contentSize   = NSSize(width: 360, height: 680)
         p.behavior      = .transient
         p.animates      = true
         p.contentViewController = NSHostingController(
@@ -181,6 +184,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Updates the status item icon to match the current weather type.
     @objc private func weatherTypeDidChange() {
         updateStatusItemIcon()
+        startIconAnimation()
     }
 
     func updateStatusItemIcon() {
@@ -189,11 +193,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             iconName = "pause.circle"
         } else {
             switch WeatherSettings.shared.weatherType {
-            case .rain:         iconName = "cloud.rain.fill"
-            case .aiStorm:      iconName = "bolt.trianglebadge.exclamationmark.fill"
-            case .snow:         iconName = "cloud.snow.fill"
-            case .thunderstorm: iconName = "cloud.bolt.rain.fill"
-            case .fog:          iconName = "cloud.fog.fill"
+            case .rain:
+                let frames = ["cloud.rain", "cloud.rain.fill", "cloud.heavyrain.fill"]
+                iconName = frames[iconAnimationFrame % frames.count]
+            case .aiStorm:
+                let frames = ["bolt.fill", "bolt.trianglebadge.exclamationmark.fill", "bolt.circle.fill"]
+                iconName = frames[iconAnimationFrame % frames.count]
+            case .snow:
+                let frames = ["snowflake", "cloud.snow.fill", "snowflake.circle"]
+                iconName = frames[iconAnimationFrame % frames.count]
+            case .thunderstorm:
+                let frames = ["cloud.bolt.rain", "cloud.bolt.rain.fill", "cloud.bolt.fill"]
+                iconName = frames[iconAnimationFrame % frames.count]
+            case .fog:
+                let frames = ["cloud.fog", "cloud.fog.fill", "cloud"]
+                iconName = frames[iconAnimationFrame % frames.count]
+            case .aurora:
+                let frames = ["aqi.low", "aqi.medium", "aqi.high"]
+                iconName = frames[iconAnimationFrame % frames.count]
             }
         }
         if let img = NSImage(systemSymbolName: iconName, accessibilityDescription: "wthrr") {
@@ -201,11 +218,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func startIconAnimation() {
+        stopIconAnimation()
+        iconAnimationTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            self?.advanceIconFrame()
+        }
+    }
+
+    private func stopIconAnimation() {
+        iconAnimationTimer?.invalidate()
+        iconAnimationTimer = nil
+        iconAnimationFrame = 0
+    }
+
+    private func advanceIconFrame() {
+        iconAnimationFrame = (iconAnimationFrame + 1) % 3
+        updateStatusItemIcon()
+    }
+
     @objc private func togglePauseFromMenu() {
         WeatherSettings.shared.togglePause()
     }
 
     @objc private func pauseStateDidChange() {
+        if WeatherSettings.shared.isPaused { stopIconAnimation() } else { startIconAnimation() }
         updateStatusItemIcon()
     }
 
@@ -351,6 +387,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Lifecycle
 
     func applicationWillTerminate(_ notification: Notification) {
+        stopIconAnimation()
         tearDownHotkeyMonitors()
         overlayWindowController?.tearDown()
         overlayWindowController = nil

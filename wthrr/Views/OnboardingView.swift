@@ -159,6 +159,7 @@ struct OnboardingView: View {
                 weatherButton(.thunderstorm, icon: "cloud.bolt.rain.fill", label: "Thunderstorm")
                 weatherButton(.fog, icon: "cloud.fog.fill", label: "Fog")
                 weatherButton(.aiStorm, icon: "bolt.trianglebadge.exclamationmark.fill", label: "AI Storm")
+                weatherButton(.aurora, icon: "aqi.medium", label: "Aurora Borealis")
             }
             .padding(.top, 4)
         }
