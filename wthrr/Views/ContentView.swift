@@ -22,8 +22,7 @@ struct ContentView: View {
     // Persisted section expand/collapse state
     @AppStorage("section.presets")     private var presetsExpanded = false
     @AppStorage("section.particles")   private var particlesExpanded = true
-    @AppStorage("section.wind")        private var windExpanded = false
-    @AppStorage("section.atmosphere")  private var atmosphereExpanded = false
+    @AppStorage("section.wind")        private var windExpanded = true
     @AppStorage("section.displays")    private var displaysExpanded = false
     @AppStorage("section.colors")      private var colorsExpanded = false
     @AppStorage("section.performance") private var performanceExpanded = false
@@ -35,13 +34,23 @@ struct ContentView: View {
             VStack(spacing: 0) {
 
                 // ── Header ──────────────────────────────────
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     // Weather icon + info (left)
                     headerSection
 
                     Spacer()
 
-                    // Pause + shortcut (right)
+                    // Reroll + Pause (right)
+                    Button {
+                        settings.reroll()
+                    } label: {
+                        Image(systemName: "shuffle")
+                            .font(.system(size: 13))
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help(settings.rerollLabel)
+
                     pauseRow
                 }
                 .padding(.top, 14)
@@ -49,17 +58,27 @@ struct ContentView: View {
 
                 Divider().padding(.vertical, 8)
 
+                // ── Live mini preview ────────────────────────
+                WeatherView()
+                    .environment(settings)
+                    .environment(ScreenGeometry())
+                    .frame(height: 64)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(.white.opacity(0.08), lineWidth: 1))
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 10)
+
                 // ── Always-visible controls ─────────────────
                 VStack(spacing: 12) {
                     liveWeatherSection
 
                     Picker(selection: $settings.weatherType) {
-                        Text("Snow").tag(WeatherType.snow)
-                        Text("Rain").tag(WeatherType.rain)
-                        Text("Storm").tag(WeatherType.thunderstorm)
-                        Text("Fog").tag(WeatherType.fog)
-                        Text("AI").tag(WeatherType.aiStorm)
-                        Text("Aurora").tag(WeatherType.aurora)
+                        Image(systemName: "snowflake").help("Snow").tag(WeatherType.snow)
+                        Image(systemName: "cloud.rain.fill").help("Rain").tag(WeatherType.rain)
+                        Image(systemName: "cloud.bolt.rain.fill").help("Thunderstorm").tag(WeatherType.thunderstorm)
+                        Image(systemName: "cloud.fog.fill").help("Fog").tag(WeatherType.fog)
+                        Image(systemName: "cpu").help("AI Storm").tag(WeatherType.aiStorm)
+                        Image(systemName: "aqi.medium").help("Aurora").tag(WeatherType.aurora)
                     } label: {
                         EmptyView()
                     }
@@ -74,14 +93,6 @@ struct ContentView: View {
 
                 // ── Collapsible sections ────────────────────
                 VStack(spacing: 0) {
-                    // Presets
-                    SettingsSection("Presets", icon: "star.fill",
-                                    isExpanded: $presetsExpanded) {
-                        presetsContent
-                    }
-
-                    sectionDivider
-
                     // Particles
                     SettingsSection("Particles", icon: "circle.dotted",
                                     isExpanded: $particlesExpanded) {
@@ -90,20 +101,11 @@ struct ContentView: View {
 
                     sectionDivider
 
-                    // Wind
-                    SettingsSection("Wind", icon: "wind",
+                    // Environment (Wind + Atmosphere)
+                    SettingsSection("Environment", icon: "wind",
                                     isExpanded: $windExpanded,
-                                    badge: windBadge) {
-                        windContent
-                    }
-
-                    sectionDivider
-
-                    // Atmosphere
-                    SettingsSection("Atmosphere", icon: "cloud.fill",
-                                    isExpanded: $atmosphereExpanded,
-                                    badge: atmosphereBadge) {
-                        atmosphereContent
+                                    badge: environmentBadge) {
+                        environmentContent
                     }
 
                     sectionDivider
@@ -126,6 +128,14 @@ struct ContentView: View {
 
                     sectionDivider
 
+                    // Presets
+                    SettingsSection("Presets", icon: "star.fill",
+                                    isExpanded: $presetsExpanded) {
+                        presetsContent
+                    }
+
+                    sectionDivider
+
                     // Behavior & Performance
                     SettingsSection("Behavior", icon: "gearshape",
                                     isExpanded: $performanceExpanded,
@@ -137,33 +147,28 @@ struct ContentView: View {
 
                 Divider().padding(.vertical, 10)
 
-                // ── Actions ─────────────────────────────────
-                Button {
-                    settings.reroll()
-                } label: {
-                    Label(settings.rerollLabel, systemImage: "shuffle")
-                        .font(.body.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.regular)
-                .padding(.horizontal, 20)
-
-                Divider().padding(.vertical, 10)
-
                 // ── Footer ──────────────────────────────────
-                HStack(spacing: 8) {
-                    Button("Quit wthrr") {
-                        NSApplication.shared.terminate(nil)
-                    }
-                    .keyboardShortcut("q")
-
+                HStack(spacing: 16) {
                     Button {
                         AppDelegate.shared?.showSplashScreen(manual: true)
                     } label: {
-                        Label("Splash", systemImage: "sparkles")
+                        Label("About", systemImage: "info.circle")
+                            .font(.caption)
                     }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    Button("Quit") {
+                        NSApplication.shared.terminate(nil)
+                    }
+                    .buttonStyle(.plain)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .keyboardShortcut("q")
                 }
+                .padding(.horizontal, 20)
                 .padding(.bottom, 8)
 
                 Divider().padding(.vertical, 6)
@@ -173,7 +178,7 @@ struct ContentView: View {
 
             } // VStack
         } // ScrollView
-        .frame(width: 340)
+        .frame(width: 375)
         .frame(maxHeight: 720)
         .background(.regularMaterial)
         .onAppear {
@@ -263,6 +268,12 @@ struct ContentView: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .tint(currentIntensity == intensity ? .accentColor : nil)
+            }
+
+            if currentIntensity == nil {
+                Text("Custom")
+                    .font(.caption2.italic())
+                    .foregroundStyle(.tertiary)
             }
         }
         .disabled(settings.liveWeatherEnabled)
@@ -367,6 +378,13 @@ struct ContentView: View {
                 }
             }
 
+            if presetStore.allPresets.filter({ !$0.isBuiltIn }).isEmpty {
+                Text("Tap + to save your current settings as a preset")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 2)
+            }
+
             FlowLayout(spacing: 4) {
                 ForEach(presetStore.allPresets) { preset in
                     PresetPill(
@@ -410,7 +428,24 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Section: Wind
+    // MARK: - Section: Environment (Wind + Atmosphere)
+
+    private var environmentBadge: String? {
+        var parts: [String] = []
+        if let w = windBadge { parts.append(w) }
+        if let a = atmosphereBadge { parts.append(a) }
+        return parts.isEmpty ? nil : parts.joined(separator: " \u{00B7} ")
+    }
+
+    private var environmentContent: some View {
+        VStack(spacing: 0) {
+            windContent
+            Divider().padding(.vertical, 8)
+            atmosphereContent
+        }
+    }
+
+    // MARK: - Wind
 
     private var windBadge: String? {
         settings.windStrength < 0.05 ? "Calm" : windLabel(settings.windStrength)

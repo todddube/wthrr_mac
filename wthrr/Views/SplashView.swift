@@ -91,7 +91,7 @@ struct SplashView: View {
             WeatherView()
                 .environment(settings)
                 .environment(ScreenGeometry())
-                .opacity(0.5)
+                .opacity(0.3)
 
             // Gradient overlay for readability
             LinearGradient(
@@ -130,15 +130,6 @@ struct SplashView: View {
 
                 Spacer().frame(height: 24)
 
-                // Version & build
-                HStack(spacing: 12) {
-                    VersionBadge(label: "Version", value: appVersion)
-                    VersionBadge(label: "Build", value: buildNumber)
-                }
-                .opacity(appeared ? 1 : 0)
-
-                Spacer().frame(height: 28)
-
                 // Feature list
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(Array(features.enumerated()), id: \.offset) { index, feature in
@@ -164,17 +155,26 @@ struct SplashView: View {
                 // Author
                 VStack(spacing: 4) {
                     Text("by Todd Dube")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
                         .foregroundStyle(.white.opacity(0.7))
 
                     Text("2025")
-                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                        .font(.system(size: 13, weight: .regular, design: .rounded))
                         .foregroundStyle(.white.opacity(0.4))
                 }
                 .opacity(appeared ? 1 : 0)
 
                 Spacer().frame(height: 12)
 
+                // Version & build
+                HStack(spacing: 12) {
+                    VersionBadge(label: "Version", value: appVersion)
+                    VersionBadge(label: "Build", value: buildNumber)
+                }
+                .opacity(appeared ? 1 : 0)
+
+                Spacer().frame(height: 12)
+                
                 // Close button with animated countdown
                 Button {
                     onDismiss()
