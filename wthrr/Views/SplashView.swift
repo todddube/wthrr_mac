@@ -21,6 +21,7 @@ struct SplashView: View {
     /// Countdown seconds remaining before auto-dismiss.
     @State private var secondsRemaining: Int = 8
     @State private var appeared = false
+    @State private var showingWhatsNew = false
 
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
@@ -175,36 +176,65 @@ struct SplashView: View {
 
                 Spacer().frame(height: 12)
                 
-                // Close button with animated countdown
-                Button {
-                    onDismiss()
-                } label: {
-                    Text("Close (\(secondsRemaining))")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(
-                            Capsule()
-                                .fill(.white.opacity(0.2))
-                                .overlay(
-                                    Capsule()
-                                        .stroke(.white.opacity(0.4), lineWidth: 1)
-                                )
-                        )
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .onHover { inside in
-                    if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                // Action buttons — What's New + Close
+                HStack(spacing: 10) {
+                    // What's New
+                    Button {
+                        showingWhatsNew = true
+                    } label: {
+                        Label("What's New", systemImage: "sparkles")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(
+                                Capsule()
+                                    .fill(.white.opacity(0.12))
+                                    .overlay(Capsule().stroke(.white.opacity(0.3), lineWidth: 1))
+                            )
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { inside in
+                        if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                    }
+
+                    // Close with countdown
+                    Button {
+                        onDismiss()
+                    } label: {
+                        Text("Close (\(secondsRemaining))")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(
+                                Capsule()
+                                    .fill(.white.opacity(0.2))
+                                    .overlay(Capsule().stroke(.white.opacity(0.4), lineWidth: 1))
+                            )
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { inside in
+                        if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                    }
                 }
                 .padding(.horizontal, 40)
                 .padding(.bottom, 20)
                 .opacity(appeared ? 1 : 0)
             }
+            // What's New overlay — shown when user taps the button
+            if showingWhatsNew {
+                WhatsNewView {
+                    showingWhatsNew = false
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            }
         }
         .frame(width: 380, height: 540)
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .animation(.easeOut(duration: 0.2), value: showingWhatsNew)
         .onAppear {
             withAnimation(.easeOut(duration: 0.5)) {
                 appeared = true
