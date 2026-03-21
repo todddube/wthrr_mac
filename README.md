@@ -76,10 +76,6 @@ Three buttons — **Light**, **Medium**, **Heavy** — that instantly set amount
 - **AI Storm**: 4 named neon palettes (Cyberpunk, Synthwave, Matrix, Inferno)
 - Per-weather-type color that updates in real time
 
-### Seasonal & Time-of-Day Awareness
-- **Seasonal auto-switch**: Snow in winter, Rain in spring, Thunderstorm in summer, Fog in autumn
-- **Night dimming**: Subtly dims effects between 10pm-5am with dusk/dawn transitions
-
 ### Live Weather
 - Pulls real conditions from Open-Meteo and auto-applies weather type + intensity
 - Shows location name and temperature in the header
@@ -98,9 +94,14 @@ Three buttons — **Light**, **Medium**, **Heavy** — that instantly set amount
 - Transparent overlay windows pass all mouse events through
 - Clean SIGTERM handling for graceful shutdown
 
+### Behavior
+- **Launch at Login** — start wthrr automatically when you log in
+- **Seasonal auto-switch**: Snow in winter, Rain in spring, Thunderstorm in summer, Fog in autumn
+- **Night dimming**: Subtly dims effects between 10pm–5am with dusk/dawn transitions
+
 ### Onboarding & Updates
 - **First-launch walkthrough**: 3-step flow — Welcome, Pick Weather, Set Intensity
-- **What's New screen**: Version-gated changelog shown once after each update
+- **What's New screen**: Version-gated changelog shown once after each update, also accessible from the splash screen
 
 ### Settings Panel
 375px popover with live weather preview strip at the top and collapsible sections with persisted expand/collapse state:
@@ -109,7 +110,7 @@ Three buttons — **Light**, **Medium**, **Heavy** — that instantly set amount
 - **Colors** — per-weather-type theming
 - **Displays** — all or selected monitors
 - **Presets** — built-in + user presets as pill buttons, save/import/export
-- **Behavior** — seasonal, night dimming, melt rate, AI density, low power
+- **Behavior** — launch at login, seasonal, night dimming, melt rate, AI density, low power
 - Shuffle/reroll button in header for instant randomization
 - macOS vibrancy material background
 

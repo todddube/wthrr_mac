@@ -5,6 +5,7 @@
 // GitHub: https://github.com/todddube/wthrr_mac
 
 import SwiftUI
+import ServiceManagement
 
 // MARK: - Content view
 
@@ -17,6 +18,7 @@ struct ContentView: View {
     @State private var isRecordingHotkey = false
     @State private var pendingHotkey: HotkeyBinding?
     @State private var pauseRowHovered = false
+    @State private var launchAtLogin: Bool = (SMAppService.mainApp.status == .enabled)
     private var liveWeather: LiveWeatherService { LiveWeatherService.shared }
     private var presetStore: PresetStore { PresetStore.shared }
 
@@ -742,6 +744,7 @@ struct ContentView: View {
 
     private var behaviorBadge: String? {
         var parts: [String] = []
+        if launchAtLogin { parts.append("Auto-start") }
         if settings.seasonalEnabled { parts.append("Seasonal") }
         if settings.timeDimmingEnabled { parts.append("Night Dim") }
         if settings.lowPowerMode { parts.append("Low Power") }
@@ -751,6 +754,43 @@ struct ContentView: View {
     private var behaviorContent: some View {
         @Bindable var settings = settings
         return VStack(spacing: 10) {
+            // Launch at Login
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle(isOn: $launchAtLogin) {
+                    HStack {
+                        Text("Launch at Login")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(launchAtLogin ? "On" : "Off")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .onChange(of: launchAtLogin) { _, enabled in
+                    do {
+                        if enabled {
+                            try SMAppService.mainApp.register()
+                        } else {
+                            try SMAppService.mainApp.unregister()
+                        }
+                    } catch {
+                        // Revert the toggle if the system call fails
+                        launchAtLogin = (SMAppService.mainApp.status == .enabled)
+                    }
+                }
+
+                if launchAtLogin {
+                    Text("wthrr will start automatically when you log in")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            Divider()
+
             // Seasonal auto-switch
             VStack(alignment: .leading, spacing: 4) {
                 Toggle(isOn: $settings.seasonalEnabled) {

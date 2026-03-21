@@ -52,6 +52,7 @@ struct WhatsNewView: View {
             // App
             ("keyboard",              "Global hotkey — pause and resume from anywhere, fully customizable"),
             ("sparkles",              "Onboarding walkthrough — pick your weather and intensity on first launch"),
+            ("arrow.up.right.circle.fill", "Launch at Login — start wthrr automatically when you log in"),
         ]
     }
 
