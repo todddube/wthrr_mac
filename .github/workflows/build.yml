@@ -1,65 +1,26 @@
-name: Build & Package
+name: Build & Package DMG
 
 on:
   push:
     tags:
-      - 'v*'          # triggers on v1.0, v1.1.2, etc.
+      - 'v*'          # triggers on v1.0, v1.1, etc.
   workflow_dispatch:  # manual trigger from GitHub UI
 
 jobs:
   build:
     name: Build DMG
-    runs-on: macos-15    # Xcode 26 ships on macOS 15 runners
+    runs-on: macos-15
 
     steps:
-      # ── Checkout ──────────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── Tooling ───────────────────────────────────────────────────────────
       - name: Install create-dmg
         run: brew install create-dmg
 
-      # ── Signing — import certificate from GitHub Secret ───────────────────
-      #
-      # To set this up:
-      #   1. Export your Developer ID Application cert from Keychain as .p12
-      #   2. base64-encode it:  base64 -i cert.p12 | pbcopy
-      #   3. Add these GitHub repo secrets:
-      #        APPLE_CERT_BASE64      — the base64-encoded .p12
-      #        APPLE_CERT_PASSWORD    — the .p12 export password
-      #        KEYCHAIN_PASSWORD      — any strong random string
-      #
-      - name: Import signing certificate
-        env:
-          APPLE_CERT_BASE64:   ${{ secrets.APPLE_CERT_BASE64 }}
-          APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
-          KEYCHAIN_PASSWORD:   ${{ secrets.KEYCHAIN_PASSWORD }}
-        run: |
-          CERT_PATH="$RUNNER_TEMP/cert.p12"
-          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain"
-
-          echo "$APPLE_CERT_BASE64" | base64 --decode > "$CERT_PATH"
-
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$CERT_PATH" \
-              -k "$KEYCHAIN_PATH" \
-              -P "$APPLE_CERT_PASSWORD" \
-              -T /usr/bin/codesign \
-              -T /usr/bin/xcodebuild
-          security list-keychain -d user -s "$KEYCHAIN_PATH"
-          security set-key-partition-list \
-              -S apple-tool:,apple: \
-              -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-      # ── Build & DMG ───────────────────────────────────────────────────────
       - name: Build DMG
         run: ./scripts/build-dmg.sh
-        # Add --notarize and notarytool secrets when ready for notarization
 
-      # ── Upload artifact ───────────────────────────────────────────────────
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
@@ -67,11 +28,11 @@ jobs:
           path: build/*.dmg
           retention-days: 30
 
-      # ── GitHub Release (only on version tags) ─────────────────────────────
+      # Creates a draft GitHub Release with the DMG attached (on version tags only)
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: build/*.dmg
           generate_release_notes: true
-          draft: true        # Review before publishing
+          draft: true

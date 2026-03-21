@@ -126,7 +126,13 @@ Three buttons — **Light**, **Medium**, **Heavy** — that instantly set amount
 - macOS 26.4 or later
 - Xcode 26+ (to build from source)
 
-## Building
+## Install
+
+Download the latest `.dmg` from the [Releases](https://github.com/todddube/wthrr_mac/releases) page, open it, and drag **wthrr** into your Applications folder.
+
+> **First launch:** macOS will show an "unidentified developer" warning because the app is distributed outside the App Store. Right-click (or Control-click) the app icon and choose **Open** — you only need to do this once.
+
+## Building from Source
 
 1. Clone the repo:
    ```bash
@@ -142,6 +148,21 @@ Three buttons — **Light**, **Medium**, **Heavy** — that instantly set amount
 3. Select the **wthrr** scheme, choose **My Mac**, and hit **Cmd+R**.
 
 The app appears as a weather icon in your menu bar. Click it to open the settings popover. Right-click for a quick context menu.
+
+## Building a DMG
+
+Requires [Homebrew](https://brew.sh) and one tool:
+
+```bash
+brew install create-dmg
+./scripts/build-dmg.sh
+```
+
+This produces `build/wthrr-<version>.dmg` — ready to upload to your website. The script:
+
+1. Renders the styled DMG background (aurora gradient, no external deps)
+2. Builds the Release `.app` via `xcodebuild`
+3. Packages it into a Finder-window DMG with an Applications shortcut
 
 ## Architecture
 
