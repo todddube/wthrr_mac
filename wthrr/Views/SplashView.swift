@@ -158,9 +158,9 @@ struct SplashView: View {
                         .font(.system(size: 15, weight: .medium, design: .rounded))
                         .foregroundStyle(.white.opacity(0.7))
 
-                    Text("2025")
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.4))
+                    Link("thedubes.com", destination: URL(string: "https://www.thedubes.com")!)
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.45))
                 }
                 .opacity(appeared ? 1 : 0)
 

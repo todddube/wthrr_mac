@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var newPresetName = ""
     @State private var isRecordingHotkey = false
     @State private var pendingHotkey: HotkeyBinding?
+    @State private var pauseRowHovered = false
     private var liveWeather: LiveWeatherService { LiveWeatherService.shared }
     private var presetStore: PresetStore { PresetStore.shared }
 
@@ -59,14 +60,20 @@ struct ContentView: View {
                 Divider().padding(.vertical, 8)
 
                 // ── Live mini preview ────────────────────────
-                WeatherView()
-                    .environment(settings)
-                    .environment(ScreenGeometry())
-                    .frame(height: 64)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(.white.opacity(0.08), lineWidth: 1))
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 10)
+                ZStack {
+                    Color.black.opacity(0.35)
+                    WeatherView()
+                        .environment(settings)
+                        .environment(ScreenGeometry())
+                        .id(settings.weatherType)
+                        .transition(.opacity)
+                }
+                .frame(height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(.white.opacity(0.08), lineWidth: 1))
+                .animation(.easeInOut(duration: 0.4), value: settings.weatherType)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 10)
 
                 // ── Always-visible controls ─────────────────
                 VStack(spacing: 12) {
@@ -160,12 +167,14 @@ struct ContentView: View {
 
                     Spacer()
 
-                    Button("Quit") {
+                    Button {
                         NSApplication.shared.terminate(nil)
+                    } label: {
+                        Label("Quit wthrr", systemImage: "power")
+                            .font(.caption.weight(.medium))
                     }
-                    .buttonStyle(.plain)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                     .keyboardShortcut("q")
                 }
                 .padding(.horizontal, 20)
@@ -210,12 +219,21 @@ struct ContentView: View {
                 .symbolRenderingMode(.multicolor)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(settings.temperatureText)
-                    .font(.system(size: 26, weight: .light, design: .rounded))
-
-                Text(settings.isPaused ? "Paused" : settings.weatherLabel)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                if settings.liveWeatherEnabled {
+                    // Live mode: show real temperature prominently
+                    Text(settings.temperatureText)
+                        .font(.system(size: 26, weight: .light, design: .rounded))
+                    Text(settings.isPaused ? "Paused" : settings.weatherLabel)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    // Manual mode: show weather name prominently, no fake temp
+                    Text(settings.isPaused ? "Paused" : settings.weatherLabel)
+                        .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    Text("Decorative · Manual")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
         }
     }
@@ -234,22 +252,30 @@ struct ContentView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
 
-            ShortcutBadge(
-                binding: settings.pauseHotkey,
-                isRecording: $isRecordingHotkey,
-                pendingHotkey: $pendingHotkey,
-                onAccept: {
-                    if let hotkey = pendingHotkey {
-                        settings.pauseHotkey = hotkey
+            if pauseRowHovered || isRecordingHotkey {
+                ShortcutBadge(
+                    binding: settings.pauseHotkey,
+                    isRecording: $isRecordingHotkey,
+                    pendingHotkey: $pendingHotkey,
+                    onAccept: {
+                        if let hotkey = pendingHotkey {
+                            settings.pauseHotkey = hotkey
+                        }
+                        pendingHotkey = nil
+                        isRecordingHotkey = false
+                    },
+                    onCancel: {
+                        pendingHotkey = nil
+                        isRecordingHotkey = false
                     }
-                    pendingHotkey = nil
-                    isRecordingHotkey = false
-                },
-                onCancel: {
-                    pendingHotkey = nil
-                    isRecordingHotkey = false
-                }
-            )
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            }
+        }
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                pauseRowHovered = hovering
+            }
         }
     }
 

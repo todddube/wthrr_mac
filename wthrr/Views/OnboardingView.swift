@@ -125,9 +125,10 @@ struct OnboardingView: View {
                 .multilineTextAlignment(.center)
 
             VStack(alignment: .leading, spacing: 8) {
-                featureRow(icon: "sparkles", text: "Snow, rain, fog, storms & more")
+                featureRow(icon: "sparkles", text: "Snow, rain, fog, aurora & more")
+                featureRow(icon: "location.fill", text: "Live weather or fully manual")
                 featureRow(icon: "display.2", text: "Works across all displays")
-                featureRow(icon: "slider.horizontal.3", text: "Fully customizable")
+                featureRow(icon: "slider.horizontal.3", text: "9 presets — or tune your own")
             }
             .padding(.top, 8)
         }

@@ -23,13 +23,13 @@ struct WhatsNewView: View {
     /// Update this array each release.
     private var entries: [(icon: String, text: String)] {
         [
-            ("cloud.bolt.rain.fill", "New Thunderstorm mode with heavy rain and lightning"),
-            ("cloud.fog.fill", "New Fog mode with drifting mist bands"),
-            ("pause.fill", "Pause/Resume with customizable global hotkey"),
-            ("star.fill", "Preset system with 8 built-in presets"),
-            ("gauge.with.dots.needle.67percent", "Light / Medium / Heavy intensity quick-taps"),
-            ("calendar", "Seasonal awareness — auto-switches with the seasons"),
-            ("moon.stars", "Time-of-day dimming for night-time subtlety"),
+            ("aqi.medium", "Aurora Borealis — rippling color bands, no particles needed"),
+            ("location.fill", "Live Weather — real conditions from Open-Meteo, auto-applied"),
+            ("cpu", "AI Storm improvements — alien ships, fractures, 4 neon palettes"),
+            ("rectangle.inset.filled", "Live preview strip in settings — see effects as you tune"),
+            ("wind", "Environment section — Wind and Atmosphere unified"),
+            ("shuffle", "Reroll button in header for instant randomization"),
+            ("star.fill", "9 built-in presets with import/export support"),
         ]
     }
 

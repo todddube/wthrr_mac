@@ -36,14 +36,20 @@ All items below have been implemented and are in the current codebase.
 
 ## Remaining Ideas
 
-### Per-Display Settings
-Different weather type on different monitors simultaneously.
-Snow on the main display, rain on the secondary — strong visual wow factor for multi-display users.
-**Effort: High** — requires per-screen WeatherSettings architecture.
-
 ### Screen Frost (Snow Mode)
 Ice crystal formations that slowly creep inward from screen edges at high accumulation levels.
 Pure canvas path drawing, no physics required. Pairs naturally with the existing accumulation system.
+**Effort: Medium** — most visually stunning remaining idea, strong Snow mode differentiator.
+
+### Per-Display Settings
+Different weather type on different monitors simultaneously.
+Snow on the main display, rain on the secondary — strong visual wow factor for multi-display users.
+**Effort: High** — requires per-screen WeatherSettings architecture rethink.
+
+### Adaptive Quality
+Auto-reduce particle count when CPU exceeds a threshold, or when battery drops below a configurable %.
+Prevents the app from spinning up fans on MacBooks; users notice when a fun app hurts battery life.
+**Effort: Medium** — pairs naturally with the existing Low Power Mode toggle.
 
 ### Additional Tuning Knobs
 - Puddle ripple speed (currently 40 pts/sec hardcoded)
@@ -53,7 +59,6 @@ Pure canvas path drawing, no physics required. Pairs naturally with the existing
 - Per-cloud speed variance
 
 ### Performance
-- Adaptive quality: reduce particle count automatically when CPU > threshold
 - Offscreen particle culling
 - Battery % threshold to trigger Low Power mode automatically
 

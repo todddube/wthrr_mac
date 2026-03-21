@@ -4,6 +4,159 @@
 
 ---
 
+## Distribution Strategy — Option A (Chosen)
+
+### Public GitHub + thedubes.com/wthrr + LemonSqueezy
+
+This is the recommended strategy. All three pieces work together:
+
+| Component | Role |
+|-----------|------|
+| **Public GitHub repo** (`todddube/wthrr`) | Credibility, discoverability, releases, issue tracking |
+| **Private GitHub repo** (`todddube/wthrr_mac`) | All source code — never public |
+| **thedubes.com/wthrr** | Sales landing page — video, download, buy button |
+| **LemonSqueezy** | Payment, license key delivery, tax compliance |
+
+---
+
+### Two-Repo Strategy: Private Source, Public Presence
+
+The source code stays private. The public repo is a marketing shell.
+
+**Private repo: `todddube/wthrr_mac`** *(this repo)*
+- All Swift source code lives here
+- Build, sign, and notarize locally using your Apple Developer ID
+- Upload the finished `.dmg` artifact to the public repo's GitHub Releases
+- Never exposed — no one sees the implementation
+
+**Public repo: `todddube/wthrr`**
+- No source code — marketing and distribution only
+- Contains: `README.md` (features, screenshots, download link), `CHANGELOG.md`, `LICENSE`
+- GitHub Releases hosts the signed `.dmg` binaries for each version
+- Issues enabled for bug reports and feature requests
+- This is the URL you share everywhere: Product Hunt, Reddit, press pitches, thedubes.com/wthrr
+
+**Why this works:**
+- Discoverability and credibility of an open presence without exposing source
+- GitHub Releases is the standard distribution mechanism for direct-sale Mac apps — users trust it
+- You control exactly what the public sees
+- This is how most successful paid indie Mac apps handle it (Raycast was private for years, many others still are)
+
+---
+
+### Naming Convention
+
+| Thing | Name |
+|---|---|
+| App | **wthrr** |
+| Public GitHub repo | `github.com/todddube/wthrr` |
+| Private GitHub repo | `github.com/todddube/wthrr_mac` *(existing)* |
+| Sales landing page | `thedubes.com/wthrr` |
+| LemonSqueezy product | `wthrr — Weather Effects for Mac` |
+| `.dmg` filename | `wthrr-1.0.0.dmg` *(semver, matches MARKETING_VERSION)* |
+| Bundle identifier | `com.thedubes.wthrr` *(or current value — keep consistent)* |
+
+---
+
+---
+
+### Why Public GitHub (Not Private)
+
+A public repo is almost always the right call for a paid indie app:
+
+- **Free marketing** — developers discover it, star it, share it on Hacker News and Twitter
+- **Credibility signal** — shows the app is real, maintained, and not abandonware
+- **Open source ≠ free** — you can have a public repo and still sell the app. Most people pay for convenience, updates, and trust — not the source code itself
+- **Launch platforms need a link** — Product Hunt, Hacker News Show HN, and Reddit posts all benefit from a live repo to point to
+- **wthrr's value is the experience**, not proprietary algorithms — the code being visible does not undermine the sale
+
+**Private repo** is only justified when the code itself is the competitive moat. That's not the case here.
+
+---
+
+### Why Not the Mac App Store
+
+The App Store would actively hurt wthrr:
+
+- **30% cut** on every $4.99 sale — you'd keep $3.49 instead of ~$4.24 via LemonSqueezy
+- **Sandbox restrictions** — borderless overlay windows and global hotkeys are difficult or impossible under the App Store sandbox. The app architecture would need a significant rewrite
+- **Review delays** — every update waits days for Apple approval
+- **No trial model** — App Store doesn't support the 14-day full trial → 10-minute session model
+- **No direct customer relationship** — you can't email customers, offer discount codes, or handle license recovery easily
+
+**Decision: Direct distribution only.**
+
+---
+
+### GitHub Repo Setup
+
+1. Create public repo: `github.com/todddube/wthrr_mac`
+2. The existing `README.md` is your repo landing page — it already documents all features, architecture, and building instructions
+3. Add a prominent **Download / Buy** badge at the top of the README linking to `thedubes.com/wthrr`
+4. Use GitHub Releases to host signed `.dmg` files for each version
+5. GitHub Issues for public bug tracking and feature requests — this builds community and trust
+
+**README badge to add (top of README, below the title):**
+```markdown
+[![Download](https://img.shields.io/badge/Download-thedubes.com/wthrr-blue)](https://www.thedubes.com/wthrr)
+[![Price](https://img.shields.io/badge/Price-%244.99%20one--time-green)](https://www.thedubes.com/wthrr)
+```
+
+---
+
+### thedubes.com/wthrr — Sales Landing Page
+
+This page is the single place you send everyone: Product Hunt, Reddit, Twitter, press. It handles both download (free trial) and purchase.
+
+**Page structure:**
+
+**Above the fold:**
+- Looping autoplay MP4 (not GIF — 85% smaller file, same effect) of weather on a real desktop
+- Headline: `"Animated Weather Effects for Your macOS Desktop"`
+- Subheadline: `"Snow. Rain. AI Storms. Aurora. Across all your displays. $4.99 lifetime."`
+- One CTA button: **"Download Free Trial"** (links to latest `.dmg` on GitHub Releases)
+
+**Modes section:**
+- Three side-by-side GIFs: snow, rain, AI storm
+- Short one-line description per mode
+
+**Features section:**
+- Multi-display screenshot
+- Bullet list: 9 presets, live weather, seasonal awareness, fully customizable
+
+**Social proof (add post-launch):**
+- Product Hunt badge
+- Reddit/Twitter quotes
+- Download count
+
+**Pricing section:**
+- `"$4.99 — One-time purchase. Works forever. No subscription."`
+- "Buy License" button → LemonSqueezy checkout page
+- "Already have a key? Activate in the app."
+
+**Footer:**
+- Download link, support email, GitHub link, `© Todd Dube — thedubes.com`
+
+**Hosting:** GitHub Pages (`todddube.github.io/wthrr`) with a custom domain redirect from `thedubes.com/wthrr`. Free, no maintenance.
+
+---
+
+### LemonSqueezy Product Configuration
+
+1. Sign up at lemonsqueezy.com (free)
+2. Create store: "Todd Dube" or "thedubes"
+3. Create product: `"wthrr — Weather Effects for Mac"`
+4. Price: $4.99 USD, one-time
+5. License key settings: **3 activations per key** (covers user's MacBook + desktop + spare)
+6. Delivery: Automatic license key via email on purchase
+7. Checkout URL: Embed on thedubes.com/wthrr as the "Buy License" button destination
+8. Configure webhook (optional): Notify your server on purchase for analytics
+9. Set up discount codes: `LAUNCH` (40% off for launch week = $2.99), `BLACKFRIDAY` (same)
+
+**Test before launch:** LemonSqueezy has a test mode — complete a full purchase flow end-to-end and verify the license key activates correctly in the app before going live.
+
+---
+
 ## How Other Indie Mac Apps Do It
 
 Before choosing a strategy, here's what works in the wild:
@@ -730,11 +883,13 @@ The marketing strategy is simple: **make it look cool, put it where Mac users ha
 
 | Component | Solution | Cost |
 |-----------|----------|------|
+| Source + releases | Public GitHub repo (`todddube/wthrr_mac`) | $0 |
+| Sales landing page | thedubes.com/wthrr (GitHub Pages + custom domain) | $0 |
 | Payment + license keys | LemonSqueezy | ~$0.75/sale (~$4.24 net) |
 | Trial model | 14-day full trial → 10-min sessions | $0 |
 | License storage | macOS Keychain | $0 |
 | Code signing + notarization | Apple Developer ID | $99/year |
-| Auto-updates | Sparkle framework | $0 |
-| Landing page | GitHub Pages / Netlify | $0 |
-| New app code | ~300 lines Swift | ~2–3 days |
+| Auto-updates | Sparkle framework (appcast on GitHub Releases) | $0 |
+| New app code | ~300 lines Swift (LicenseManager + UI) | ~2–3 days |
 | Ongoing maintenance | Near zero | — |
+| **Total upfront** | | **$99/year + 2–3 days dev** |

@@ -168,6 +168,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         settingsItem.target = self
         menu.addItem(settingsItem)
 
+        let aboutItem = NSMenuItem(title: "About wthrr", action: #selector(showAboutFromMenu), keyEquivalent: "")
+        aboutItem.target = self
+        menu.addItem(aboutItem)
+
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(title: "Quit wthrr", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -238,6 +242,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func togglePauseFromMenu() {
         WeatherSettings.shared.togglePause()
+    }
+
+    @objc private func showAboutFromMenu() {
+        showSplashScreen(manual: true)
     }
 
     @objc private func pauseStateDidChange() {
