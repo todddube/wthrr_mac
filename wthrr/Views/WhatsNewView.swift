@@ -60,28 +60,32 @@ struct WhatsNewView: View {
 
                 Spacer().frame(height: 20)
 
-                // Changelog entries
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
-                        HStack(spacing: 10) {
-                            Image(systemName: entry.icon)
-                                .font(.system(size: 13))
-                                .foregroundStyle(.white.opacity(0.85))
-                                .frame(width: 22, alignment: .center)
+                // Changelog entries — scrollable so they always fit
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: entry.icon)
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(.white.opacity(0.85))
+                                    .frame(width: 22, alignment: .center)
+                                    .padding(.top, 1)
 
-                            Text(entry.text)
-                                .font(.system(size: 13, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.85))
-                                .fixedSize(horizontal: false, vertical: true)
+                                Text(entry.text)
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.85))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .opacity(appeared ? 1 : 0)
+                            .offset(x: appeared ? 0 : -15)
+                            .animation(.easeOut(duration: 0.35).delay(0.2 + Double(index) * 0.06), value: appeared)
                         }
-                        .opacity(appeared ? 1 : 0)
-                        .offset(x: appeared ? 0 : -15)
-                        .animation(.easeOut(duration: 0.35).delay(0.2 + Double(index) * 0.06), value: appeared)
                     }
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 8)
                 }
-                .padding(.horizontal, 32)
 
-                Spacer()
+                Spacer().frame(height: 16)
 
                 // Dismiss button
                 Button {
@@ -103,7 +107,7 @@ struct WhatsNewView: View {
                 .opacity(appeared ? 1 : 0)
             }
         }
-        .frame(width: 380, height: 480)
+        .frame(width: 380, height: 520)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .onAppear {
             withAnimation(.easeOut(duration: 0.5)) {
