@@ -8,12 +8,11 @@ See [README.md](README.md) for the full list of currently implemented features.
 
 All items below have been implemented and are in the current codebase.
 
-- **Preset System** — 9 built-in presets, user-saveable presets, JSON import/export
+- **Preset System** — 9 built-in presets, user-saveable presets, JSON import/export, empty-state hint
 - **Seasonal / Time-of-Day Awareness** — auto-switch by month, night dimming 10pm-5am
-- **Color Theming** — hue sliders for snow/rain/fog, 4 AI Storm palettes (Cyberpunk, Synthwave, Matrix, Inferno)
+- **Color Theming** — hue sliders for snow/rain/fog/aurora, 4 AI Storm palettes (Cyberpunk, Synthwave, Matrix, Inferno)
 - **Global Pause / Resume Hotkey** — customizable shortcut (default Cmd+Shift+P), menu bar icon reflects state
-- **Pause Button in Settings** — centered below weather summary
-- **Intensity Quick-Tap Presets** — Light / Medium / Heavy buttons
+- **Intensity Quick-Tap Presets** — Light / Medium / Heavy buttons; "Custom" label when manually adjusted
 - **Thunderstorm Mode** — composite rain + forced lightning + forced clouds
 - **Fog / Mist Effect** — drifting gradient bands + soft wisp particles
 - **Aurora Borealis** — rippling vertical color bands, pure gradient animation
@@ -23,6 +22,15 @@ All items below have been implemented and are in the current codebase.
 - **Tuning Knobs** — snow melt rate, AI Storm density, cloud opacity, wind angle
 - **Collapsible Settings Sections** — persisted expand/collapse state, summary badges
 - **macOS Vibrancy** — .regularMaterial background on settings popover
+- **Live Weather** — Open-Meteo integration, auto weather type + intensity, location name + temperature in header
+- **Settings Panel UX Polish**:
+  - 375px wide panel (up from 340px) for better breathing room
+  - Live 64px weather preview strip at the top of the popover
+  - Icons-only segmented weather type picker with per-icon hover tooltips
+  - Reroll/shuffle button moved into the header next to Pause
+  - Section order optimised by frequency of use: Particles → Environment → Colors → Displays → Presets → Behavior
+  - Wind + Atmosphere merged into single "Environment" section with combined badge
+  - Footer redesigned: "About" (plain, secondary) and "Quit" (plain, tertiary) — low visual prominence
 
 ---
 

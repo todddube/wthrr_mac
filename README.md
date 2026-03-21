@@ -58,12 +58,12 @@ Animated weather effects for your macOS desktop. Snow, rain, thunderstorms, fog,
 ## Features
 
 ### Presets
-- **8 built-in presets**: Blizzard, Light Flurry, Spring Rain, Monsoon, Thunderstorm, Foggy Morning, Aurora Borealis, Glitch Overload, Digital Ghost
+- **9 built-in presets**: Blizzard, Light Flurry, Spring Rain, Monsoon, Thunderstorm, Foggy Morning, Aurora Borealis, Glitch Overload, Digital Ghost
 - Save and load custom presets with named configurations
 - Import/export presets as JSON for sharing between machines
 
 ### Intensity Quick-Taps
-Three buttons — **Light**, **Medium**, **Heavy** — that instantly set amount, speed, wind, and opacity to sensible values. Active intensity is highlighted.
+Three buttons — **Light**, **Medium**, **Heavy** — that instantly set amount, speed, wind, and opacity to sensible values. Active intensity is highlighted; "Custom" appears when sliders are manually adjusted.
 
 ### Pause & Global Hotkey
 - Pause/Resume button freezes all effects instantly
@@ -103,14 +103,14 @@ Three buttons — **Light**, **Medium**, **Heavy** — that instantly set amount
 - **What's New screen**: Version-gated changelog shown once after each update
 
 ### Settings Panel
-Collapsible sections with persisted expand/collapse state:
-- **Presets** — built-in + user presets as pill buttons, save/import/export
+375px popover with live weather preview strip at the top and collapsible sections with persisted expand/collapse state:
 - **Particles** — amount, speed, opacity sliders
-- **Wind** — strength, direction, fall angle
-- **Atmosphere** — clouds (size/speed/opacity), accumulation, lightning
+- **Environment** — wind (strength, direction, fall angle) + atmosphere (clouds, accumulation, lightning)
 - **Colors** — per-weather-type theming
 - **Displays** — all or selected monitors
+- **Presets** — built-in + user presets as pill buttons, save/import/export
 - **Behavior** — seasonal, night dimming, melt rate, AI density, low power
+- Shuffle/reroll button in header for instant randomization
 - macOS vibrancy material background
 
 <p align="center">
@@ -167,7 +167,7 @@ wthrr/
 ```
 WeatherSettings.shared          (@Observable @MainActor singleton)
     |
-    +-- ContentView              (menu bar popover — collapsible settings sections)
+    +-- ContentView              (menu bar popover — live preview + collapsible sections)
     |
     +-- OverlayWindowController
             |
