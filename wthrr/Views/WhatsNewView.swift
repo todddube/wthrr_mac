@@ -23,13 +23,35 @@ struct WhatsNewView: View {
     /// Update this array each release.
     private var entries: [(icon: String, text: String)] {
         [
-            ("aqi.medium", "Aurora Borealis — rippling color bands, no particles needed"),
-            ("location.fill", "Live Weather — real conditions from Open-Meteo, auto-applied"),
-            ("cpu", "AI Storm improvements — alien ships, fractures, 4 neon palettes"),
-            ("rectangle.inset.filled", "Live preview strip in settings — see effects as you tune"),
-            ("wind", "Environment section — Wind and Atmosphere unified"),
-            ("shuffle", "Reroll button in header for instant randomization"),
-            ("star.fill", "9 built-in presets with import/export support"),
+            // Weather modes
+            ("aqi.medium",            "Aurora Borealis — rippling color bands across all your displays"),
+            ("cloud.bolt.rain.fill",  "Thunderstorm — dark clouds, heavy rain, and forced lightning"),
+            ("cloud.fog.fill",        "Fog — slow drifting translucent bands and soft wisp particles"),
+            ("cpu",                   "AI Storm — alien ships, screen fractures, data bolts, and 4 neon palettes"),
+
+            // Live data
+            ("location.fill",         "Live Weather — pulls real conditions from Open-Meteo and auto-applies effect + intensity"),
+
+            // Controls & UI
+            ("rectangle.inset.filled","Live 64px preview strip — see every change in real time as you tune"),
+            ("wind",                  "Environment section — Wind and Atmosphere controls unified in one place"),
+            ("shuffle",               "Reroll button — instantly randomize a fresh look from the header"),
+            ("bolt.fill",             "Intensity quick-taps — Light, Medium, Heavy set everything at once"),
+
+            // Presets & customization
+            ("star.fill",             "9 built-in presets — Blizzard, Monsoon, Aurora, Glitch Overload, and more"),
+            ("square.and.arrow.up",   "Preset import/export — share your custom setups as JSON"),
+            ("paintpalette.fill",     "Color theming — hue slider for Snow, Rain, and Fog; palette swap for AI Storm"),
+
+            // Display & behavior
+            ("display.2",             "Multi-display support — overlays span all connected monitors independently"),
+            ("moon.stars.fill",       "Night dimming — subtly fades effects between 10pm and 5am"),
+            ("calendar",              "Seasonal auto-switch — Snow in winter, Rain in spring, and so on"),
+            ("tortoise.fill",         "Low Power Mode — caps animation to ~30 fps to save energy"),
+
+            // App
+            ("keyboard",              "Global hotkey — pause and resume from anywhere, fully customizable"),
+            ("sparkles",              "Onboarding walkthrough — pick your weather and intensity on first launch"),
         ]
     }
 
