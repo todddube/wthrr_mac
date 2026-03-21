@@ -1,4 +1,13 @@
 .DS_Store
-.DS_Store
-.DS_Store
-.DS_Store
+
+# Xcode derived data & build artifacts
+xcuserdata/
+*.xcuserstate
+DerivedData/
+
+# Local build output (DMG, xcarchive, export)
+build/
+
+# SwiftPM
+.build/
+.swiftpm/
