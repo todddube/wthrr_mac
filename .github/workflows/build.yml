@@ -30,11 +30,26 @@ jobs:
           path: build/*.dmg
           retention-days: 30
 
-      # Creates a draft GitHub Release with the DMG attached (on version tags only)
+      # Creates a GitHub Release with the DMG attached (on version tags only).
+      # Release notes are read from release-notes/<version>.md (strip leading 'v').
+      - name: Resolve release notes path
+        if: startsWith(github.ref, 'refs/tags/')
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          NOTES="release-notes/${VERSION}.md"
+          if [[ -f "$NOTES" ]]; then
+            echo "path=$NOTES" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=" >> "$GITHUB_OUTPUT"
+            echo "Warning: no release notes found at $NOTES — falling back to auto-generated notes."
+          fi
+
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: build/*.dmg
-          generate_release_notes: true
-          draft: true
+          body_path: ${{ steps.notes.outputs.path }}
+          generate_release_notes: ${{ steps.notes.outputs.path == '' }}
+          draft: false

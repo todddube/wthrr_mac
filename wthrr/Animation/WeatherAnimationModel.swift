@@ -260,7 +260,7 @@ final class WeatherAnimationModel {
         }
 
         let accumulating = settings.accumulationEnabled && !accumulationMap.isEmpty
-        let maxAccumH    = CGFloat(settings.maxAccumulationHeight)
+        let maxAccumH    = min(CGFloat(settings.maxAccumulationHeight), screenSize.height * 0.20)
 
         for i in particles.indices {
             // Apply fall speed, wind, and wobble to each particle
