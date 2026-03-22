@@ -157,11 +157,29 @@ struct ContentView: View {
                 Divider().padding(.vertical, 10)
 
                 // ── Footer ──────────────────────────────────
-                HStack(spacing: 16) {
+                HStack(spacing: 12) {
                     Button {
                         AppDelegate.shared?.showSplashScreen(manual: true)
                     } label: {
                         Label("About", systemImage: "info.circle")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+
+                    Button {
+                        AppDelegate.shared?.showOnboarding()
+                    } label: {
+                        Label("Onboarding", systemImage: "hand.wave")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+
+                    Button {
+                        AppDelegate.shared?.showWhatsNew()
+                    } label: {
+                        Label("What's New", systemImage: "sparkles")
                             .font(.caption)
                     }
                     .buttonStyle(.plain)

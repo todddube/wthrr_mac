@@ -339,19 +339,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Onboarding
 
     /// Shows the first-launch onboarding walkthrough.
-    private func showOnboarding() {
-        let window = KeyableBorderlessWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 380, height: 480),
-            styleMask: [.borderless],
+    func showOnboarding() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 560),
+            styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
         )
         window.isReleasedWhenClosed = false
-        window.backgroundColor = .clear
-        window.isOpaque = false
-        window.hasShadow = true
+        window.title = "Welcome to wthrr"
         window.level = .floating
-        window.isMovableByWindowBackground = true
         window.center()
 
         let onboardingView = OnboardingView { [weak self] in
@@ -367,22 +364,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - What's New
 
     /// Shows the post-update changelog screen.
-    private func showWhatsNew() {
-        let window = KeyableBorderlessWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 380, height: 480),
-            styleMask: [.borderless],
+    func showWhatsNew() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 560),
+            styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
         )
         window.isReleasedWhenClosed = false
-        window.backgroundColor = .clear
-        window.isOpaque = false
-        window.hasShadow = true
+        window.title = "What's New in wthrr"
         window.level = .floating
-        window.isMovableByWindowBackground = true
         window.center()
 
-        let whatsNewView = WhatsNewView {  [weak self] in
+        let whatsNewView = WhatsNewView { [weak self] in
             WhatsNewView.markAsSeen()
             self?.dismissSplashScreen()
         }

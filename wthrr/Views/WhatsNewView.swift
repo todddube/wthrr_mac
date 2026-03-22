@@ -57,85 +57,71 @@ struct WhatsNewView: View {
     }
 
     var body: some View {
-        ZStack {
-            // Blurred dark background
-            Color.black.opacity(0.7)
+        VStack(spacing: 0) {
+            // Header
+            VStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.yellow)
+                    .padding(.top, 28)
 
-            VStack(spacing: 0) {
-                Spacer().frame(height: 28)
+                Text("What's New")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
 
-                // Header
-                VStack(spacing: 8) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 40))
-                        .foregroundStyle(.yellow)
-                        .shadow(color: .black.opacity(0.4), radius: 6, y: 3)
+                Text("Version \(appVersion)")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+            }
+            .opacity(appeared ? 1 : 0)
+            .padding(.bottom, 16)
 
-                    Text("What's New")
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+            Divider()
+                .padding(.horizontal, 28)
 
-                    Text("v\(appVersion)")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.5))
-                }
-                .opacity(appeared ? 1 : 0)
+            // Changelog entries
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: entry.icon)
+                                .font(.system(size: 13))
+                                .foregroundStyle(Color.accentColor)
+                                .frame(width: 22, alignment: .center)
+                                .padding(.top, 1)
 
-                Spacer().frame(height: 20)
-
-                // Changelog entries — scrollable so they always fit
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        ForEach(Array(entries.enumerated()), id: \.offset) { index, entry in
-                            HStack(alignment: .top, spacing: 10) {
-                                Image(systemName: entry.icon)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(.white.opacity(0.85))
-                                    .frame(width: 22, alignment: .center)
-                                    .padding(.top, 1)
-
-                                Text(entry.text)
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                                    .foregroundStyle(.white.opacity(0.85))
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            .opacity(appeared ? 1 : 0)
-                            .offset(x: appeared ? 0 : -15)
-                            .animation(.easeOut(duration: 0.35).delay(0.2 + Double(index) * 0.06), value: appeared)
+                            Text(entry.text)
+                                .font(.system(size: 13))
+                                .fixedSize(horizontal: false, vertical: true)
                         }
+                        .opacity(appeared ? 1 : 0)
+                        .offset(x: appeared ? 0 : -12)
+                        .animation(.easeOut(duration: 0.3).delay(0.15 + Double(index) * 0.04), value: appeared)
                     }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 8)
                 }
-
-                Spacer().frame(height: 16)
-
-                // Dismiss button
-                Button {
-                    onDismiss()
-                } label: {
-                    Text("Continue")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(
-                            Capsule().fill(.white.opacity(0.2))
-                                .overlay(Capsule().stroke(.white.opacity(0.4), lineWidth: 1))
-                        )
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 40)
-                .padding(.bottom, 24)
-                .opacity(appeared ? 1 : 0)
+                .padding(.horizontal, 28)
+                .padding(.vertical, 14)
             }
+            .frame(maxHeight: 380)
+
+            Divider()
+                .padding(.horizontal, 28)
+
+            // Dismiss button
+            Button {
+                onDismiss()
+            } label: {
+                Text("Continue")
+                    .frame(minWidth: 100)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .keyboardShortcut(.return)
+            .padding(.vertical, 16)
+            .opacity(appeared ? 1 : 0)
         }
-        .frame(width: 380, height: 520)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .frame(width: 440)
         .onAppear {
-            withAnimation(.easeOut(duration: 0.5)) {
-                appeared = true
-            }
+            withAnimation(.easeOut(duration: 0.4)) { appeared = true }
         }
     }
 
