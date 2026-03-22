@@ -150,21 +150,6 @@ Download the latest `.dmg` from the [Releases](https://github.com/todddube/wthrr
 
 The app appears as a weather icon in your menu bar. Click it to open the settings popover. Right-click for a quick context menu.
 
-## Building a DMG
-
-Requires [Homebrew](https://brew.sh) and one tool:
-
-```bash
-brew install create-dmg
-./scripts/build-dmg.sh
-```
-
-This produces `build/wthrr-<version>.dmg` — ready to upload to your website. The script:
-
-1. Renders the styled DMG background (aurora gradient, no external deps)
-2. Builds the Release `.app` via `xcodebuild`
-3. Packages it into a Finder-window DMG with an Applications shortcut
-
 ## Architecture
 
 ```
@@ -205,13 +190,9 @@ WeatherSettings.shared          (@Observable @MainActor singleton)
                             +-- CloudRenderer      (clouds, shared)
 ```
 
-## Versioning
+## Releasing
 
-Version and build number are managed in Xcode build settings:
-- `MARKETING_VERSION` — user-visible version
-- `CURRENT_PROJECT_VERSION` — monotonic build number
-
-Edit via **Project Navigator -> wthrr target -> General tab**.
+See [RELEASE.md](RELEASE.md) for the full release process — version bumping, DMG build, tagging, and publishing to GitHub Releases.
 
 ## Roadmap
 
