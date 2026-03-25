@@ -21,6 +21,14 @@ struct FogBand {
 
 /// Creates fog wisp particles — large, slow, translucent.
 enum FogParticleFactory {
+    /// Creates a single fog wisp with randomised position, size, and drift parameters.
+    /// Wisps are intentionally very low-opacity (0.03-0.12) and large (8-30 pt radius)
+    /// so many can overlap without obscuring the wallpaper.
+    /// - Parameters:
+    ///   - startY: Initial vertical position in points.
+    ///   - screenWidth: Width of the target display in points.
+    ///   - rng: Seeded random number generator for deterministic output.
+    /// - Returns: A fully configured `Particle` representing a fog wisp.
     static func makeWisp(startY: CGFloat, screenWidth: CGFloat, rng: inout SeededRNG) -> Particle {
         let size = CGFloat(rng.next(in: 8...30))
         return Particle(

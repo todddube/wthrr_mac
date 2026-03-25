@@ -23,12 +23,15 @@ struct ContentView: View {
     private var presetStore: PresetStore { PresetStore.shared }
 
     // Persisted section expand/collapse state
-    @AppStorage("section.presets")     private var presetsExpanded = false
-    @AppStorage("section.particles")   private var particlesExpanded = true
-    @AppStorage("section.wind")        private var windExpanded = true
-    @AppStorage("section.displays")    private var displaysExpanded = false
-    @AppStorage("section.colors")      private var colorsExpanded = false
-    @AppStorage("section.performance") private var performanceExpanded = false
+    @AppStorage("section.displays")  private var displaysExpanded = true
+    @AppStorage("section.expanded")  private var expandedSection: String = ""
+
+    private func sectionBinding(_ id: String) -> Binding<Bool> {
+        Binding(
+            get: { expandedSection == id },
+            set: { expandedSection = $0 ? id : "" }
+        )
+    }
 
     var body: some View {
         @Bindable var settings = settings
@@ -57,6 +60,16 @@ struct ContentView: View {
                     pauseRow
                 }
                 .padding(.top, 14)
+                .padding(.horizontal, 20)
+
+                Divider().padding(.vertical, 8)
+
+                // ── Displays ─────────────────────────────────
+                SettingsSection("Displays", icon: "display",
+                                isExpanded: $displaysExpanded,
+                                badge: displaysBadge) {
+                    displaysContent
+                }
                 .padding(.horizontal, 20)
 
                 Divider().padding(.vertical, 8)
@@ -104,7 +117,7 @@ struct ContentView: View {
                 VStack(spacing: 0) {
                     // Particles
                     SettingsSection("Particles", icon: "circle.dotted",
-                                    isExpanded: $particlesExpanded) {
+                                    isExpanded: sectionBinding("particles")) {
                         particlesContent
                     }
 
@@ -112,7 +125,7 @@ struct ContentView: View {
 
                     // Environment (Wind + Atmosphere)
                     SettingsSection("Environment", icon: "wind",
-                                    isExpanded: $windExpanded,
+                                    isExpanded: sectionBinding("environment"),
                                     badge: environmentBadge) {
                         environmentContent
                     }
@@ -121,25 +134,16 @@ struct ContentView: View {
 
                     // Colors
                     SettingsSection("Colors", icon: "paintpalette.fill",
-                                    isExpanded: $colorsExpanded,
+                                    isExpanded: sectionBinding("colors"),
                                     badge: colorsBadge) {
                         colorsContent
                     }
 
                     sectionDivider
 
-                    // Displays
-                    SettingsSection("Displays", icon: "display",
-                                    isExpanded: $displaysExpanded,
-                                    badge: displaysBadge) {
-                        displaysContent
-                    }
-
-                    sectionDivider
-
                     // Presets
                     SettingsSection("Presets", icon: "star.fill",
-                                    isExpanded: $presetsExpanded) {
+                                    isExpanded: sectionBinding("presets")) {
                         presetsContent
                     }
 
@@ -147,7 +151,7 @@ struct ContentView: View {
 
                     // Behavior & Performance
                     SettingsSection("Behavior", icon: "gearshape",
-                                    isExpanded: $performanceExpanded,
+                                    isExpanded: sectionBinding("behavior"),
                                     badge: behaviorBadge) {
                         behaviorContent
                     }

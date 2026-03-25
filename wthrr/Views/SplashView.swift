@@ -13,7 +13,6 @@ import SwiftUI
 /// Dismisses automatically after 20 seconds or when the user clicks the close button.
 struct SplashView: View {
     @Environment(WeatherSettings.self) private var settings
-    @Environment(\.colorScheme) private var colorScheme
 
     /// Called when the splash should close (timer or user action).
     var onDismiss: () -> Void
@@ -87,158 +86,104 @@ struct SplashView: View {
     }
 
     var body: some View {
-        ZStack {
-            // Live weather animation background
-            WeatherView()
-                .environment(settings)
-                .environment(ScreenGeometry())
-                .opacity(0.3)
+        VStack(spacing: 0) {
 
-            // Gradient overlay for readability
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.7),
-                    Color.black.opacity(0.5),
-                    Color.black.opacity(0.7)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            // App icon & name
+            VStack(spacing: 6) {
+                Image(systemName: settings.weatherIcon)
+                    .font(.system(size: 48))
+                    .symbolRenderingMode(.multicolor)
+                    .padding(.top, 28)
 
-            // Content
-            VStack(spacing: 0) {
+                Text("wthrr")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
 
-                Spacer().frame(height: 32)
+                Text("Decorative Weather for macOS")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : -10)
+            .padding(.bottom, 16)
 
-                // App icon & name
-                VStack(spacing: 8) {
-                    Image(systemName: settings.weatherIcon)
-                        .font(.system(size: 56))
-                        .symbolRenderingMode(.multicolor)
-                        .shadow(color: .black.opacity(0.5), radius: 8, y: 4)
+            Divider()
+                .padding(.horizontal, 28)
 
-                    Text("wthrr")
-                        .font(.system(size: 42, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .shadow(color: .black.opacity(0.5), radius: 6, y: 3)
-
-                    Text("Decorative Weather for macOS")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
-                }
-                .opacity(appeared ? 1 : 0)
-                .offset(y: appeared ? 0 : -10)
-
-                Spacer().frame(height: 24)
-
-                // Feature list
+            // Feature list
+            ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(Array(features.enumerated()), id: \.offset) { index, feature in
                         HStack(spacing: 10) {
                             Image(systemName: feature.icon)
                                 .font(.system(size: 13))
-                                .foregroundStyle(.white.opacity(0.9))
-                                .frame(width: 20, alignment: .center)
+                                .foregroundStyle(Color.accentColor)
+                                .frame(width: 22, alignment: .center)
 
                             Text(feature.text)
                                 .font(.system(size: 13, weight: .medium, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.85))
                         }
                         .opacity(appeared ? 1 : 0)
                         .offset(x: appeared ? 0 : -20)
                         .animation(.easeOut(duration: 0.4).delay(0.3 + Double(index) * 0.08), value: appeared)
                     }
                 }
-                .padding(.horizontal, 40)
+                .padding(.horizontal, 28)
+                .padding(.vertical, 14)
+            }
 
-                Spacer()
+            Divider()
+                .padding(.horizontal, 28)
 
-                // Author
-                VStack(spacing: 4) {
-                    Text("by Todd Dube")
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
+            // Author & version
+            VStack(spacing: 6) {
+                Text("by Todd Dube")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(.secondary)
 
-                    Link("thedubes.com", destination: URL(string: "https://www.thedubes.com")!)
-                        .font(.system(size: 12, weight: .regular, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.45))
-                }
-                .opacity(appeared ? 1 : 0)
+                Link("thedubes.com", destination: URL(string: "https://www.thedubes.com")!)
+                    .font(.system(size: 12, design: .rounded))
+                    .foregroundStyle(.tertiary)
 
-                Spacer().frame(height: 12)
-
-                // Version & build
                 HStack(spacing: 12) {
                     VersionBadge(label: "Version", value: appVersion)
                     VersionBadge(label: "Build", value: buildNumber)
                 }
-                .opacity(appeared ? 1 : 0)
-
-                Spacer().frame(height: 12)
-                
-                // Action buttons — What's New + Close
-                HStack(spacing: 10) {
-                    // What's New
-                    Button {
-                        showingWhatsNew = true
-                    } label: {
-                        Label("What's New", systemImage: "sparkles")
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(
-                                Capsule()
-                                    .fill(.white.opacity(0.12))
-                                    .overlay(Capsule().stroke(.white.opacity(0.3), lineWidth: 1))
-                            )
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .onHover { inside in
-                        if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-                    }
-
-                    // Close with countdown
-                    Button {
-                        onDismiss()
-                    } label: {
-                        Text("Close (\(secondsRemaining))")
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(
-                                Capsule()
-                                    .fill(.white.opacity(0.2))
-                                    .overlay(Capsule().stroke(.white.opacity(0.4), lineWidth: 1))
-                            )
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .onHover { inside in
-                        if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-                    }
-                }
-                .padding(.horizontal, 40)
-                .padding(.bottom, 20)
-                .opacity(appeared ? 1 : 0)
+                .padding(.top, 4)
             }
-            // What's New overlay — shown when user taps the button
-            if showingWhatsNew {
-                WhatsNewView {
-                    showingWhatsNew = false
+            .opacity(appeared ? 1 : 0)
+            .padding(.vertical, 14)
+
+            Divider()
+                .padding(.horizontal, 28)
+
+            // Action buttons — What's New + Close
+            HStack(spacing: 10) {
+                Button {
+                    showingWhatsNew = true
+                } label: {
+                    Label("What's New", systemImage: "sparkles")
+                        .frame(maxWidth: .infinity)
                 }
-                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+
+                Button {
+                    onDismiss()
+                } label: {
+                    Text("Close (\(secondsRemaining))")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .keyboardShortcut(.return)
             }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 16)
+            .opacity(appeared ? 1 : 0)
         }
-        .frame(width: 380, height: 540)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .animation(.easeOut(duration: 0.2), value: showingWhatsNew)
+        .frame(width: 380)
         .onAppear {
-            withAnimation(.easeOut(duration: 0.5)) {
-                appeared = true
-            }
+            withAnimation(.easeOut(duration: 0.5)) { appeared = true }
         }
         .task {
             // Auto-dismiss countdown
@@ -247,6 +192,9 @@ struct SplashView: View {
                 secondsRemaining -= 1
             }
             onDismiss()
+        }
+        .sheet(isPresented: $showingWhatsNew) {
+            WhatsNewView { showingWhatsNew = false }
         }
     }
 }
@@ -262,16 +210,15 @@ private struct VersionBadge: View {
         VStack(spacing: 2) {
             Text(label.uppercased())
                 .font(.system(size: 9, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.4))
+                .foregroundStyle(.tertiary)
                 .tracking(1.2)
 
             Text(value)
                 .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.9))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(.white.opacity(0.1))
+        .background(.quaternary)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }

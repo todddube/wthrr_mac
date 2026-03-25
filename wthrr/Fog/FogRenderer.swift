@@ -10,6 +10,17 @@ import SwiftUI
 
 /// Draws slow-drifting translucent fog bands and wisp particles.
 enum FogRenderer {
+    /// Renders all fog elements: horizontal gradient bands followed by large soft wisp particles.
+    /// Bands and wisps are drawn front-to-back, both using gradient fills to simulate
+    /// a soft-focus blur without the GPU cost of an actual blur filter.
+    /// - Parameters:
+    ///   - context: The Canvas graphics context to draw into.
+    ///   - size: The full size of the canvas in points.
+    ///   - isDark: Whether the system is in dark mode (affects fog base colour).
+    ///   - particles: Active fog wisp particles to render as radial-gradient ellipses.
+    ///   - fogBands: Active horizontal gradient bands drifting across the screen.
+    ///   - particleOpacity: Global opacity multiplier from `WeatherSettings`.
+    ///   - tintHue: Custom hue value (-1 = default white/gray).
     static func draw(
         context: GraphicsContext,
         size: CGSize,

@@ -298,18 +298,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// opening the menu bar popover does not immediately dismiss the splash.
     func showSplashScreen(manual: Bool = false) {
         splashIsManual = manual
-        let window = KeyableBorderlessWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 380, height: 540),
-            styleMask: [.borderless],
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 380, height: 520),
+            styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
         )
         window.isReleasedWhenClosed = false
-        window.backgroundColor = .clear
-        window.isOpaque = false
-        window.hasShadow = true
+        window.title = "About wthrr"
         window.level = .floating
-        window.isMovableByWindowBackground = true
         window.center()
 
         let splashView = SplashView { [weak self] in

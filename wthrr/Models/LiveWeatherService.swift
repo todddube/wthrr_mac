@@ -7,15 +7,24 @@ import MapKit
 
 // MARK: - Open-Meteo response models
 
+/// Private model for decoding the top-level response from the Open-Meteo forecast API.
+/// Only the `current` block is used; forecast data is ignored.
 private struct OpenMeteoResponse: Decodable {
+    /// The current-conditions sub-object returned by the API.
     let current: CurrentWeather
 
+    /// Subset of Open-Meteo current-weather fields used by wthrr.
     struct CurrentWeather: Decodable {
+        /// Air temperature at 2 m altitude in the units requested (Fahrenheit).
         let temperature2m: Double
+        /// WMO weather interpretation code (0 = clear, 95 = thunderstorm, etc.).
         let weathercode: Int
+        /// Wind speed at 10 m altitude in the units requested (mph).
         let windspeed10m: Double
+        /// Current precipitation intensity in mm/h.
         let precipitation: Double
 
+        /// Maps snake_case JSON keys to camelCase Swift properties.
         enum CodingKeys: String, CodingKey {
             case temperature2m  = "temperature_2m"
             case weathercode
@@ -27,12 +36,20 @@ private struct OpenMeteoResponse: Decodable {
 
 // MARK: - Resolved condition
 
+/// The weather effect parameters derived from a single Open-Meteo API response.
+/// Passed to `WeatherSettings` to auto-apply real conditions.
 struct LiveWeatherCondition {
+    /// The weather effect type mapped from the WMO weather code.
     let weatherType: WeatherType
+    /// Recommended particle count based on precipitation intensity.
     let flakeCount: Int
+    /// Recommended speed multiplier based on precipitation intensity.
     let speedMultiplier: Double
+    /// Recommended wind strength (0-1) mapped from wind speed in mph.
     let windStrength: Double
+    /// Whether lightning should be active (true for WMO thunderstorm codes).
     let lightningEnabled: Bool
+    /// Formatted temperature string shown in the header (e.g. "52°F").
     let temperatureText: String
 }
 
@@ -44,15 +61,25 @@ struct LiveWeatherCondition {
 final class LiveWeatherService: NSObject {
     static let shared = LiveWeatherService()
 
+    /// True while a location request or API fetch is in progress.
     var isLoading = false
+    /// Reverse-geocoded city name for the most recent location, shown in the popover.
     var locationName: String = ""
+    /// Non-nil when location or network access fails; shown in the popover status row.
     var errorMessage: String?
+    /// The most recently resolved weather condition, retained so settings can be re-applied
+    /// without a fresh network request (e.g. when the user returns from background).
     var lastCondition: LiveWeatherCondition?
+    /// Whether the service is currently active. Controls the 20-minute refresh loop.
     private(set) var isRunning = false
 
+    /// Core Location manager providing GPS coordinates.
     private let locationManager = CLLocationManager()
+    /// Retained CLLocationManagerDelegate shim (weak-referenced from CLLocationManager).
     private var locationDelegate: _LocationDelegate?
+    /// Cancellable task for the active Open-Meteo fetch.
     private var fetchTask: Task<Void, Never>?
+    /// Cancellable background task that triggers a new location request every 20 minutes.
     private var refreshLoop: Task<Void, Never>?
 
     private override init() {
@@ -65,6 +92,8 @@ final class LiveWeatherService: NSObject {
 
     // MARK: - Public interface
 
+    /// Starts the live weather service: requests location authorization, fires the first
+    /// location lookup, and schedules an automatic refresh every 20 minutes.
     func start() {
         guard !isRunning else { return }
         isRunning = true
@@ -82,6 +111,7 @@ final class LiveWeatherService: NSObject {
         }
     }
 
+    /// Stops the service, cancels all background tasks, and halts the refresh loop.
     func stop() {
         isRunning = false
         refreshLoop?.cancel()
@@ -89,6 +119,7 @@ final class LiveWeatherService: NSObject {
         fetchTask?.cancel()
     }
 
+    /// Triggers an immediate location and weather refresh outside the normal 20-min cycle.
     func refresh() {
         guard isRunning else { return }
         locationManager.requestLocation()
