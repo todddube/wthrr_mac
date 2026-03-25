@@ -9,14 +9,19 @@ import SwiftUI
 // MARK: - Onboarding view
 
 /// A 3-step first-launch walkthrough: welcome, pick weather, set intensity.
-/// Shown once on first launch, then never again (gated by UserDefaults).
+/// Shown once on first launch, then never again (gated by UserDefaults key `hasCompletedOnboarding`).
+/// The walkthrough is also accessible from the footer of `ContentView` as a reminder.
 struct OnboardingView: View {
     @Environment(WeatherSettings.self) private var settings
+    /// Called when the user taps "Get Started" on the final step.
     var onComplete: () -> Void
 
+    /// Zero-based index of the currently displayed step (0 = welcome, 1 = picker, 2 = intensity).
     @State private var step = 0
+    /// Controls the fade/slide-in animation of each step's content.
     @State private var appeared = false
 
+    /// Total number of walkthrough steps (drives the progress dot row).
     private let totalSteps = 3
 
     var body: some View {
@@ -169,6 +174,7 @@ struct OnboardingView: View {
 
     // MARK: - Helpers
 
+    /// A single icon + text feature row used in the welcome step.
     private func featureRow(icon: String, text: String) -> some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
@@ -180,6 +186,8 @@ struct OnboardingView: View {
         }
     }
 
+    /// A full-width selectable button for choosing a weather type in the picker step.
+    /// The selected button shows an accent background and a checkmark to confirm the choice.
     private func weatherButton(_ type: WeatherType, icon: String, label: String) -> some View {
         let selected = settings.weatherType == type
         return Button {
@@ -212,6 +220,9 @@ struct OnboardingView: View {
         .buttonStyle(.plain)
     }
 
+    /// A full-width selectable button for choosing a particle intensity preset in the final step.
+    /// Tapping immediately applies `flakeCount`, `speedMultiplier`, `windStrength`, and
+    /// `particleOpacity` to `WeatherSettings`, providing live feedback via the overlay windows.
     private func intensityButton(_ title: String, description: String,
                                   count: Int, speed: Double, wind: Double, opacity: Double) -> some View {
         let selected = settings.flakeCount == count && settings.speedMultiplier == speed

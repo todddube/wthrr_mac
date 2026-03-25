@@ -10,22 +10,34 @@ import ServiceManagement
 // MARK: - Content view
 
 /// Root view shown inside the `MenuBarExtra` popover.
+/// Organised into a scrollable VStack with: header, display picker, live preview strip,
+/// weather type + intensity controls, and collapsible settings sections.
 struct ContentView: View {
     @Environment(WeatherSettings.self) private var settings
+    /// Live set of connected screens, refreshed on `NSApplication.didChangeScreenParametersNotification`.
     @State private var screens: [NSScreen] = NSScreen.screens
+    /// Controls visibility of the inline preset-name text field.
     @State private var showSavePreset = false
+    /// Bound to the preset-name text field while saving a new preset.
     @State private var newPresetName = ""
+    /// True while the user is in hotkey-recording mode.
     @State private var isRecordingHotkey = false
+    /// Holds the newly captured hotkey until the user accepts or cancels.
     @State private var pendingHotkey: HotkeyBinding?
+    /// Tracks hover state on the pause row to show/hide the shortcut badge.
     @State private var pauseRowHovered = false
+    /// Mirrors `SMAppService.mainApp.status` for the Launch at Login toggle.
     @State private var launchAtLogin: Bool = (SMAppService.mainApp.status == .enabled)
     private var liveWeather: LiveWeatherService { LiveWeatherService.shared }
     private var presetStore: PresetStore { PresetStore.shared }
 
-    // Persisted section expand/collapse state
+    // Persisted section expand/collapse state — only one section open at a time
     @AppStorage("section.displays")  private var displaysExpanded = true
+    /// The id string of the currently expanded collapsible section, or "" if none.
     @AppStorage("section.expanded")  private var expandedSection: String = ""
 
+    /// Creates a `Binding<Bool>` that represents whether a given section `id` is expanded.
+    /// Only one section can be expanded at a time — setting a section to `true` collapses all others.
     private func sectionBinding(_ id: String) -> Binding<Bool> {
         Binding(
             get: { expandedSection == id },
@@ -230,12 +242,15 @@ struct ContentView: View {
 
     // MARK: - Thin divider between sections
 
+    /// A visually lighter divider used between collapsible sections to reduce visual noise.
     private var sectionDivider: some View {
         Divider().padding(.vertical, 2)
     }
 
     // MARK: - Header
 
+    /// Header row showing the current weather icon, temperature/label, and control buttons.
+    /// In live weather mode, shows real temperature; in manual mode, shows the weather name.
     private var headerSection: some View {
         HStack(spacing: 10) {
             Image(systemName: settings.isPaused ? "pause.circle" : settings.weatherIcon)
@@ -264,6 +279,8 @@ struct ContentView: View {
 
     // MARK: - Pause row
 
+    /// Pause/resume button with an optional hotkey badge that appears on hover.
+    /// The badge enters recording mode when tapped, allowing the user to capture a new shortcut.
     private var pauseRow: some View {
         VStack(spacing: 4) {
             Button {
@@ -305,6 +322,9 @@ struct ContentView: View {
 
     // MARK: - Intensity quick-taps
 
+    /// Three-button row (Light / Medium / Heavy) that sets particle count, speed,
+    /// wind, and opacity in one tap. Shows "Custom" when no preset matches the current values.
+    /// Disabled while live weather is active (values are set automatically).
     private var intensityQuickTaps: some View {
         HStack(spacing: 6) {
             ForEach(Intensity.allCases) { intensity in
@@ -914,6 +934,8 @@ struct ContentView: View {
 
     // MARK: - Reusable components
 
+    /// A two-row control: a label/value header row above a slider.
+    /// The `value` string is shown right-aligned in monospaced digits for stable width.
     private func sliderRow<S: View>(label: String, value: String,
                                      @ViewBuilder slider: () -> S) -> some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -932,6 +954,7 @@ struct ContentView: View {
 
     // MARK: - Intensity
 
+    /// Preset intensity tiers for the quick-tap buttons.
     private enum Intensity: String, CaseIterable, Identifiable {
         case light  = "Light"
         case medium = "Medium"
@@ -939,6 +962,8 @@ struct ContentView: View {
         var id: String { rawValue }
     }
 
+    /// Returns the intensity tier that matches the current settings, or `nil` for "Custom".
+    /// Matching is approximate — small floating-point differences are tolerated via range checks.
     private var currentIntensity: Intensity? {
         let count = settings.flakeCount
         let speed = settings.speedMultiplier
@@ -970,6 +995,7 @@ struct ContentView: View {
 
     // MARK: - Preset helpers
 
+    /// Validates the preset name field, saves a snapshot of current settings, and hides the field.
     private func saveNewPreset() {
         let name = newPresetName.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
@@ -981,10 +1007,13 @@ struct ContentView: View {
 
     // MARK: - Helpers
 
+    /// Notifies `OverlayWindowController` to reconcile overlay windows against the current
+    /// display selection. Called whenever display mode or selected IDs change.
     private func applyDisplaySettings() {
         AppDelegate.shared?.overlayWindowController?.applySettings()
     }
 
+    /// Returns a weather-type-specific speed label for the particles section slider.
     private func speedLabelForType(_ type: WeatherType, _ v: Double) -> String {
         switch type {
         case .rain:         return rainSpeedLabel(v)
@@ -996,6 +1025,7 @@ struct ContentView: View {
         }
     }
 
+    /// Human-readable label for the generic (snow/fog/aurora) speed multiplier.
     private func speedLabel(_ v: Double) -> String {
         switch v {
         case ..<0.5:  return "Gentle"
@@ -1006,6 +1036,7 @@ struct ContentView: View {
         }
     }
 
+    /// Human-readable label for rain/thunderstorm speed multiplier.
     private func rainSpeedLabel(_ v: Double) -> String {
         switch v {
         case ..<0.5:  return "Mist"
@@ -1016,6 +1047,7 @@ struct ContentView: View {
         }
     }
 
+    /// Human-readable label for AI storm speed multiplier.
     private func aiStormSpeedLabel(_ v: Double) -> String {
         switch v {
         case ..<0.5:  return "Flicker"
@@ -1026,6 +1058,7 @@ struct ContentView: View {
         }
     }
 
+    /// Human-readable label for wind strength (0-1 range).
     private func windLabel(_ v: Double) -> String {
         switch v {
         case ..<0.05: return "Calm"
@@ -1037,6 +1070,7 @@ struct ContentView: View {
         }
     }
 
+    /// Human-readable label for the cloud opacity multiplier.
     private var cloudOpacityLabel: String {
         switch settings.cloudOpacity {
         case ..<0.5:  return "Faint"
@@ -1047,6 +1081,7 @@ struct ContentView: View {
         }
     }
 
+    /// Human-readable label for the snow melt rate setting.
     private var snowMeltLabel: String {
         switch settings.snowMeltRate {
         case ..<0.04: return "Slow"
@@ -1056,6 +1091,7 @@ struct ContentView: View {
         }
     }
 
+    /// Human-readable label for the AI storm secondary-effect density multiplier.
     private var aiStormDensityLabel: String {
         switch settings.aiStormDensity {
         case ..<0.5:  return "Sparse"
@@ -1210,6 +1246,7 @@ struct ShortcutBadge: View {
 /// An invisible NSView-backed view that becomes first responder to capture key events
 /// during shortcut recording.
 struct KeyEventCatcher: NSViewRepresentable {
+    /// Called with each `NSEvent` received while this view is first responder.
     let onKeyDown: (NSEvent) -> Void
 
     func makeNSView(context: Context) -> KeyCatcherView {
@@ -1222,11 +1259,16 @@ struct KeyEventCatcher: NSViewRepresentable {
         nsView.onKeyDown = onKeyDown
     }
 
+    /// Underlying NSView that captures keyboard input during hotkey recording.
     class KeyCatcherView: NSView {
+        /// Forwarded to the parent `KeyEventCatcher` closure on each key-down.
         var onKeyDown: ((NSEvent) -> Void)?
 
+        /// Enables this view to receive focus via `makeFirstResponder`.
         override var acceptsFirstResponder: Bool { true }
 
+        /// Requests first-responder status whenever the view enters a window,
+        /// ensuring key events are captured as soon as recording mode is entered.
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             DispatchQueue.main.async { [weak self] in
@@ -1243,9 +1285,14 @@ struct KeyEventCatcher: NSViewRepresentable {
 // MARK: - Preset pill
 
 /// Compact pill button for loading a preset.
+/// Shows the preset's weather icon followed by its name. A context menu provides
+/// a destructive "Delete" action for user-created (non-built-in) presets.
 struct PresetPill: View {
+    /// The preset this pill represents.
     let preset: WeatherPreset
+    /// Called when the pill is tapped to apply the preset.
     let onTap: () -> Void
+    /// Called when the user selects "Delete" from the context menu. `nil` for built-in presets.
     let onDelete: (() -> Void)?
 
     var body: some View {
@@ -1286,7 +1333,9 @@ struct PresetPill: View {
 // MARK: - Flow layout
 
 /// Simple horizontal wrapping layout for preset pills.
+/// Places subviews left-to-right, wrapping to the next row when the available width is exhausted.
 struct FlowLayout: Layout {
+    /// Horizontal and vertical gap between subviews in points.
     var spacing: CGFloat = 4
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
@@ -1302,11 +1351,15 @@ struct FlowLayout: Layout {
         }
     }
 
+    /// Intermediate result from `arrange`: per-subview origins relative to the layout origin,
+    /// and the total bounding size of all rows.
     private struct ArrangeResult {
         var positions: [CGPoint]
         var size: CGSize
     }
 
+    /// Computes subview positions by walking left-to-right and wrapping at `maxWidth`.
+    /// Also computes the total bounding size so `sizeThatFits` can return it without re-running.
     private func arrange(proposal: ProposedViewSize, subviews: Subviews) -> ArrangeResult {
         let maxWidth = proposal.width ?? .infinity
         var positions: [CGPoint] = []
@@ -1335,9 +1388,13 @@ struct FlowLayout: Layout {
 
 // MARK: - About view
 
+/// Compact footer view at the bottom of the popover showing the app version and
+/// a clickable GitHub link. Intentionally low-prominence (caption2 font, secondary color).
 struct AboutView: View {
+    /// The wthrr GitHub repository URL opened on link click.
     private let repoURL = URL(string: "https://github.com/todddube/wthrr_mac")!
 
+    /// Combined version + build string (e.g. "v1.2.0 (42)").
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         let build   = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"

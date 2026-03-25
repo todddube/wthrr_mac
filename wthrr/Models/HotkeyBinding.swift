@@ -21,6 +21,9 @@ struct HotkeyBinding: Codable, Equatable {
         key: "p"
     )
 
+    /// Reconstructs the strongly-typed `NSEvent.ModifierFlags` value from the persisted raw value.
+    /// The intersection with the four recognised modifiers strips any unexpected bits that could
+    /// accumulate across OS versions.
     var modifiers: NSEvent.ModifierFlags {
         NSEvent.ModifierFlags(rawValue: modifierRawValue)
             .intersection([.command, .shift, .option, .control])

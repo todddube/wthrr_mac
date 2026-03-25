@@ -23,6 +23,7 @@ struct Cloud {
 
 // MARK: - Cloud factory
 
+/// Namespace for cloud-creation logic shared by `WeatherAnimationModel`.
 enum CloudFactory {
     /// Maximum number of clouds on screen at once.
     static let maxClouds = 5

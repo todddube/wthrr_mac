@@ -19,6 +19,8 @@ struct WeatherView: View {
     @State private var model = WeatherAnimationModel()
 
     var body: some View {
+        // TimelineView(.animation) requests a redraw every display refresh cycle (~60 fps).
+        // The Canvas closure is called once per frame with the current graphics context and size.
         TimelineView(.animation) { timeline in
             Canvas { context, size in
                 // Configure and advance are driven by the timeline date change,
@@ -29,7 +31,7 @@ struct WeatherView: View {
 
                 let isDark = colorScheme == .dark
 
-                // Draw clouds behind particles
+                // Clouds are drawn first (behind particles) so particles appear to fall through them
                 if settings.cloudsEnabled || settings.weatherType == .thunderstorm {
                     CloudRenderer.draw(
                         context: context,
@@ -41,6 +43,8 @@ struct WeatherView: View {
                     )
                 }
 
+                // Combine user opacity setting with the time-of-day dim factor
+                // so effects fade naturally at night without changing the stored setting.
                 let pOpacity = settings.particleOpacity * settings.timeDimFactor
                 switch settings.weatherType {
                 case .rain:

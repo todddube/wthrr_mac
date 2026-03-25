@@ -264,12 +264,17 @@ final class WeatherAnimationModel {
 
         for i in particles.indices {
             // Apply fall speed, wind, and wobble to each particle
+            // windAngle rotates the fall vector: 0° = straight down, positive = tilt right.
+            // cos(angle) projects onto the Y axis (downward), sin(angle) onto X (rightward).
             let angleRad = CGFloat(settings.windAngle) * .pi / 180
             particles[i].y += particles[i].fallSpeed * speedScale * dt * cos(angleRad)
             particles[i].x += particles[i].fallSpeed * speedScale * dt * sin(angleRad)
+            // Wind adds a per-particle lateral nudge weighted by windSensitivity
             particles[i].x += currentWindVelocity * particles[i].windSensitivity * speedScale * dt
+            // Sinusoidal wobble creates the characteristic side-to-side swaying motion
             particles[i].x += sin(time * particles[i].wobbleFreq + particles[i].wobblePhase)
                                 * particles[i].wobbleAmp * dt
+            // Slowly spin the crystal (snow and AI storm only; 0 for rain)
             particles[i].rotation += particles[i].rotationSpeed * dt
 
             if isRain {
@@ -765,10 +770,14 @@ final class WeatherAnimationModel {
         }
     }
 
+    /// Empties the fog bands array. Called when switching to a different weather type.
     func clearFogEffects() {
         fogBands.removeAll()
     }
 
+    /// No-op — aurora has no persistent secondary effects to tear down.
+    /// Exists for symmetry with the other `clear*` methods and to make
+    /// `WeatherView`'s `.onChange(of: weatherType)` cleaner.
     func clearAuroraEffects() {
         // Aurora has no persistent effects to clear
     }

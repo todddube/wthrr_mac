@@ -42,7 +42,10 @@ extension WindDirection: Codable {}
 
 // MARK: - Built-in presets
 
+/// Built-in preset definitions. These are read-only (cannot be deleted) and are always
+/// shown first in the presets list ahead of user-saved presets.
 extension WeatherPreset {
+    /// Heavy snowstorm with blizzard-speed wind and deep accumulation.
     static let blizzard = WeatherPreset(
         name: "Blizzard",
         weatherType: .snow,
@@ -59,6 +62,7 @@ extension WeatherPreset {
         cloudSpeed: 2.5
     )
 
+    /// Gentle, sparse snowfall with low wind and no accumulation.
     static let lightFlurry = WeatherPreset(
         name: "Light Flurry",
         weatherType: .snow,
@@ -75,6 +79,7 @@ extension WeatherPreset {
         cloudSpeed: 0.5
     )
 
+    /// Moderate rain with puddles and light cloud cover.
     static let springRain = WeatherPreset(
         name: "Spring Rain",
         weatherType: .rain,
@@ -91,6 +96,7 @@ extension WeatherPreset {
         cloudSpeed: 0.8
     )
 
+    /// Extreme rain with high wind, frequent lightning, and heavy puddle formation.
     static let monsoon = WeatherPreset(
         name: "Monsoon",
         weatherType: .rain,
@@ -107,6 +113,7 @@ extension WeatherPreset {
         cloudSpeed: 2.8
     )
 
+    /// Full thunderstorm: dark clouds, heavy rain, forced lightning, and puddles.
     static let thunderstorm = WeatherPreset(
         name: "Thunderstorm",
         weatherType: .thunderstorm,
@@ -123,6 +130,7 @@ extension WeatherPreset {
         cloudSpeed: 2.5
     )
 
+    /// Calm, low-speed fog with minimal wind — ideal for early morning ambience.
     static let foggyMorning = WeatherPreset(
         name: "Foggy Morning",
         weatherType: .fog,
@@ -139,6 +147,7 @@ extension WeatherPreset {
         cloudSpeed: 0.5
     )
 
+    /// Dense, fast AI storm with corruption patches enabled — maximum chaos.
     static let glitchOverload = WeatherPreset(
         name: "Glitch Overload",
         weatherType: .aiStorm,
@@ -155,6 +164,7 @@ extension WeatherPreset {
         cloudSpeed: 1.0
     )
 
+    /// Barely-visible AI storm at very low opacity — a subtle digital haunting.
     static let digitalGhost = WeatherPreset(
         name: "Digital Ghost",
         weatherType: .aiStorm,
@@ -171,6 +181,7 @@ extension WeatherPreset {
         cloudSpeed: 1.0
     )
 
+    /// Slow, translucent aurora bands at low opacity — calm and hypnotic.
     static let auroraBorealis = WeatherPreset(
         name: "Aurora Borealis",
         weatherType: .aurora,
@@ -227,12 +238,16 @@ final class PresetStore {
         persist()
     }
 
+    /// Encodes `userPresets` to JSON and writes it to `UserDefaults` under `storageKey`.
+    /// Called after every mutation to keep persisted state in sync with in-memory state.
     private func persist() {
         if let data = try? JSONEncoder().encode(userPresets) {
             UserDefaults.standard.set(data, forKey: storageKey)
         }
     }
 
+    /// Reads and decodes the JSON preset array from `UserDefaults`.
+    /// Silently no-ops if the key is missing (first launch) or the data is unreadable.
     private func loadFromDefaults() {
         guard let data = UserDefaults.standard.data(forKey: storageKey),
               let presets = try? JSONDecoder().decode([WeatherPreset].self, from: data) else { return }

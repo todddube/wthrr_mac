@@ -14,16 +14,23 @@ enum ColorTheme {
     // MARK: Snow colors
 
     /// Returns the snow particle color based on the user's tint hue and color scheme.
+    /// - Parameters:
+    ///   - tint: Per-particle tint value (0-1) from `Particle.tint`, used to modulate
+    ///     the green channel for subtle colour variation within the default palette.
+    ///   - isDark: Whether the system is in dark mode.
+    ///   - hue: Custom hue from `WeatherSettings.snowTintHue` (-1 = default white/blue).
     static func snowColor(tint: Double, isDark: Bool, hue: Double) -> Color {
         if hue < 0 {
             // Default: white with subtle blue tint modulation
+            // The `tint` parameter slightly lowers the green channel to shift individual
+            // flakes toward blue, giving the snowfall a natural white-to-icy-blue range.
             if isDark {
                 return Color(red: 1.0, green: 1.0 - tint * 0.05, blue: 1.0)
             } else {
                 return Color(red: 0.88, green: 0.92 - tint * 0.04, blue: 0.98)
             }
         }
-        // Custom hue: tinted snowflakes
+        // Custom hue: tinted snowflakes — keep saturation low so they still look like snow
         let saturation = isDark ? 0.15 + tint * 0.1 : 0.2 + tint * 0.1
         let brightness = isDark ? 0.95 : 0.85
         return Color(hue: hue, saturation: saturation, brightness: brightness)

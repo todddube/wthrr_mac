@@ -9,17 +9,22 @@ import SwiftUI
 // MARK: - What's New view
 
 /// A lightweight changelog overlay shown once after an app update.
-/// Version-gated by CFBundleVersion — only shows when the build number changes.
+/// Version-gated by `CFBundleVersion` — only shows when the build number changes since the last
+/// launch. The `shouldShow` / `markAsSeen` static helpers manage the gating logic.
 struct WhatsNewView: View {
+    /// Called by the dismiss button and by `AppDelegate` after marking the version as seen.
     var onDismiss: () -> Void
 
+    /// Controls the fade/slide-in animation for all entries.
     @State private var appeared = false
 
+    /// The user-visible version string (e.g. "1.2.0"), read from the Info.plist at runtime.
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
     }
 
     /// Changelog entries for the current version.
+    /// Each entry is an (icon, text) pair shown as an SF Symbol + description row.
     /// Update this array each release.
     private var entries: [(icon: String, text: String)] {
         [

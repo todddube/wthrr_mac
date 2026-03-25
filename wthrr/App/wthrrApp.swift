@@ -34,17 +34,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: Status item & popover
 
+    /// The system status item (menu bar icon).
     private var statusItem: NSStatusItem?
+    /// The NSPopover that hosts `ContentView`. Shown on left-click.
     private var popover: NSPopover?
+    /// The floating window currently showing splash, onboarding, or What's New. One at a time.
     private var splashWindow: NSWindow?
+    /// Timer that cycles the menu bar icon through its animation frames.
     private var iconAnimationTimer: Timer?
+    /// Current frame index (0-2) within the 3-frame menu bar icon animation.
     private var iconAnimationFrame: Int = 0
     /// True when the splash was triggered manually via the settings button,
     /// meaning menu-bar interactions should NOT auto-dismiss it.
     private var splashIsManual = false
-    /// Global hotkey monitor for pause/resume (Cmd+Shift+P).
+    /// Global hotkey monitor for pause/resume (fires even when the app is not focused).
     private var globalHotkeyMonitor: Any?
-    /// Local hotkey monitor for when the app is focused.
+    /// Local hotkey monitor for when the app is focused (e.g. popover open).
     private var localHotkeyMonitor: Any?
 
     /// Builds the NSStatusItem and NSPopover, then starts the overlay.
@@ -191,6 +196,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         startIconAnimation()
     }
 
+    /// Syncs the status bar button image to the current weather type and pause state.
+    /// Public so `AppDelegate` can call it after a weather-type notification fires.
     func updateStatusItemIcon() {
         let iconName: String
         if WeatherSettings.shared.isPaused {
@@ -222,6 +229,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Starts a 2-second repeating timer that cycles the menu bar icon through 3 animation frames.
     private func startIconAnimation() {
         stopIconAnimation()
         iconAnimationTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
@@ -229,12 +237,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Invalidates the animation timer and resets the frame counter to 0.
     private func stopIconAnimation() {
         iconAnimationTimer?.invalidate()
         iconAnimationTimer = nil
         iconAnimationFrame = 0
     }
 
+    /// Advances to the next icon frame (wraps at 3) and refreshes the status item image.
     private func advanceIconFrame() {
         iconAnimationFrame = (iconAnimationFrame + 1) % 3
         updateStatusItemIcon()
@@ -248,6 +258,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         showSplashScreen(manual: true)
     }
 
+    /// Responds to `weatherPauseChanged` notifications: stops/starts icon animation and
+    /// immediately syncs the icon to the new pause state.
     @objc private func pauseStateDidChange() {
         if WeatherSettings.shared.isPaused { stopIconAnimation() } else { startIconAnimation() }
         updateStatusItemIcon()
@@ -269,6 +281,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Removes both the global and local event monitors, releasing their resources.
     private func tearDownHotkeyMonitors() {
         if let monitor = globalHotkeyMonitor { NSEvent.removeMonitor(monitor); globalHotkeyMonitor = nil }
         if let monitor = localHotkeyMonitor { NSEvent.removeMonitor(monitor); localHotkeyMonitor = nil }
@@ -385,6 +398,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Lifecycle
 
+    /// Cleans up all app resources on quit: icon animation, hotkey monitors,
+    /// overlay windows, and the status bar item.
     func applicationWillTerminate(_ notification: Notification) {
         stopIconAnimation()
         tearDownHotkeyMonitors()
@@ -395,10 +410,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Returns `false` so closing the splash/about window does not terminate the app.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
     }
 
+    /// Key used with `objc_setAssociatedObject` to retain the SIGTERM dispatch source.
     private static var sigTermKey = 0
 }
 

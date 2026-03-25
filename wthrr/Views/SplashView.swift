@@ -18,20 +18,26 @@ struct SplashView: View {
     var onDismiss: () -> Void
 
     /// Countdown seconds remaining before auto-dismiss.
+    /// Countdown displayed in the "Close" button label. Decrements every second via `.task`.
     @State private var secondsRemaining: Int = 8
+    /// Controls the fade/slide entrance animation for header and feature rows.
     @State private var appeared = false
+    /// Whether the "What's New" sheet is currently presented over the splash.
     @State private var showingWhatsNew = false
 
+    /// The user-visible version string read from Info.plist (e.g. "v1.2.0").
     private var appVersion: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         return "v\(version)"
     }
 
+    /// The monotonically-increasing build number from Info.plist (e.g. "42").
     private var buildNumber: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
     }
 
-    /// Features shown on the splash, adapted to the current weather type.
+    /// Feature bullet points shown on the splash, adapted to highlight the active weather type's
+    /// key capabilities so returning users see relevant information on every launch.
     private var features: [(icon: String, text: String)] {
         switch settings.weatherType {
         case .rain:
@@ -202,8 +208,12 @@ struct SplashView: View {
 // MARK: - Version badge
 
 /// A small labelled badge showing a version or build value.
+/// Used in `SplashView` to display both the marketing version and the build number
+/// side-by-side in a frosted-glass style card.
 private struct VersionBadge: View {
+    /// Short upper-case label above the value (e.g. "VERSION", "BUILD").
     let label: String
+    /// The value displayed in large bold text (e.g. "v1.2.0", "42").
     let value: String
 
     var body: some View {

@@ -13,6 +13,15 @@ import SwiftUI
 enum CloudRenderer {
 
     /// Draws all clouds into the given graphics context.
+    /// Natural weather types (snow, rain, fog, aurora, thunderstorm) receive soft gray ellipse
+    /// clouds; AI Storm receives angular neon-edged blocks with scanline accents.
+    /// - Parameters:
+    ///   - context: The Canvas graphics context to draw into.
+    ///   - size: The full size of the canvas in points (unused, but provided for future clipping).
+    ///   - isDark: Whether the system is in dark mode (affects base gray lightness).
+    ///   - clouds: The current cloud population to render.
+    ///   - weatherType: Determines which cloud style (natural vs. AI glitch) to use.
+    ///   - cloudOpacity: Global cloud opacity multiplier from `WeatherSettings`.
     static func draw(
         context: GraphicsContext,
         size: CGSize,
@@ -34,13 +43,18 @@ enum CloudRenderer {
     // MARK: Natural clouds (snow / rain)
 
     /// Draws a soft, grayish cloud composed of overlapping ellipses.
+    /// Each blob gets a slight random gray shift and opacity variation so the cloud
+    /// looks volumetric rather than uniform. The `blobSeed` from the cloud struct
+    /// ensures the blob layout is deterministic — blobs don't jitter between frames.
     private static func drawNaturalCloud(
         context: GraphicsContext,
         cloud: Cloud,
         isDark: Bool,
         cloudOpacity: Double = 1.0
     ) {
+        // Re-create the same RNG used at cloud creation so blob placement is stable
         var rng = SeededRNG(seed: cloud.blobSeed)
+        // Darker base in light mode so clouds have contrast against bright wallpapers
         let baseGray: Double = isDark ? 0.55 : 0.72
 
         for _ in 0..<cloud.blobCount {
@@ -52,6 +66,7 @@ enum CloudRenderer {
             let cx = cloud.x + offsetX
             let cy = cloud.y + offsetY
 
+            // Small per-blob gray variation gives the cloud visual texture
             let grayShift = rng.next(in: -0.08...0.08)
             let gray = baseGray + grayShift
             let alpha = cloud.opacity * cloudOpacity * rng.next(in: 0.6...1.0)
@@ -75,12 +90,15 @@ enum CloudRenderer {
     // MARK: AI storm clouds
 
     /// Draws a glitchy, neon-edged cloud with digital artifacts.
+    /// Instead of smooth ellipses, uses dark rectangles with a neon tint and
+    /// horizontal scanline edges for a corrupted-monitor aesthetic.
     private static func drawAICloud(
         context: GraphicsContext,
         cloud: Cloud,
         isDark: Bool,
         cloudOpacity: Double = 1.0
     ) {
+        // Three neon hues; `colorVariant` selects one per cloud at creation time
         let neonPalette: [(Double, Double, Double)] = [
             (0.0, 1.0, 0.9),   // cyan
             (0.85, 0.0, 1.0),  // magenta
@@ -88,9 +106,10 @@ enum CloudRenderer {
         ]
         let palette = neonPalette[cloud.colorVariant % neonPalette.count]
 
+        // Reuse blobSeed so block placement is frame-stable (no jitter)
         var rng = SeededRNG(seed: cloud.blobSeed)
 
-        // Glitchy rectangular blocks instead of smooth ellipses
+        // Glitchy rectangular blocks instead of smooth ellipses — 2 extra for density
         let blockCount = cloud.blobCount + 2
         for _ in 0..<blockCount {
             let bW = cloud.width * CGFloat(rng.next(in: 0.15...0.55))
