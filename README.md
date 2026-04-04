@@ -104,15 +104,22 @@ Three buttons — **Light**, **Medium**, **Heavy** — that instantly set amount
 - **What's New screen**: Version-gated changelog shown once after each update, also accessible from the splash screen
 
 ### Settings Panel
-375px popover with live weather preview strip at the top and collapsible sections with persisted expand/collapse state:
-- **Particles** — amount, speed, opacity sliders
-- **Environment** — wind (strength, direction, fall angle) + atmosphere (clouds, accumulation, lightning)
-- **Colors** — per-weather-type theming
-- **Displays** — all or selected monitors
-- **Presets** — built-in + user presets as pill buttons, save/import/export
-- **Behavior** — launch at login, seasonal, night dimming, melt rate, AI density, low power
-- Shuffle/reroll button in header for instant randomization
-- macOS vibrancy material background
+Two-panel design: a compact menu bar popover for everyday controls, plus a dedicated Settings window for advanced configuration.
+
+**Menu bar popover** — instant access controls:
+- Live 64px weather preview strip
+- Weather type picker (icon-only segmented control)
+- Intensity quick-taps (Light / Medium / Heavy)
+- Live Weather toggle + location status
+- Display selection (All or Choose specific monitors)
+- Shuffle/reroll button and Pause control in the header
+
+**Settings window** (System Preferences-style icon toolbar, 4 tabs):
+- **Appearance** — particle amount, speed, opacity; per-weather-type colour controls (hue sliders or AI Storm neon palettes); snow melt rate; AI Storm effect density
+- **Environment** — wind strength, direction, fall angle; clouds (size, speed, opacity); snow drift accumulation depth; lightning frequency
+- **Presets** — built-in + user presets as pill buttons; save, delete, import/export JSON
+- **Behavior** — Launch at Login, Seasonal auto-switch, Night Dimming, Low Power Mode; links to About, Onboarding, What's New
+- macOS vibrancy material background throughout
 
 <p align="center">
   <img src="images/settings-presets.png" alt="Presets section" width="30%">
@@ -164,7 +171,8 @@ wthrr/
 ├── Aurora/         AuroraParticle (factory), AuroraRenderer
 ├── Clouds/         Cloud (factory), CloudRenderer
 ├── Animation/      WeatherAnimationModel (display-synced physics engine)
-├── Views/          WeatherView, ContentView, SplashView, OnboardingView, WhatsNewView
+├── Views/          WeatherView, ContentView, SettingsWindowView, SplashView,
+│                   OnboardingView, WhatsNewView
 ├── Windows/        OverlayWindowController (per-display overlay windows)
 └── Assets.xcassets
 ```
@@ -174,7 +182,9 @@ wthrr/
 ```
 WeatherSettings.shared          (@Observable @MainActor singleton)
     |
-    +-- ContentView              (menu bar popover — live preview + collapsible sections)
+    +-- ContentView              (menu bar popover — core controls: type, intensity, displays)
+    |
+    +-- SettingsWindowView       (tabbed settings window — appearance, env, presets, behavior)
     |
     +-- OverlayWindowController
             |

@@ -40,6 +40,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var popover: NSPopover?
     /// The floating window currently showing splash, onboarding, or What's New. One at a time.
     private var splashWindow: NSWindow?
+    /// The persistent settings window (Appearance / Environment / Displays / Presets / Behavior tabs).
+    private var settingsWindow: NSWindow?
     /// Timer that cycles the menu bar icon through its animation frames.
     private var iconAnimationTimer: Timer?
     /// Current frame index (0-2) within the 3-frame menu bar icon animation.
@@ -169,7 +171,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
-        let settingsItem = NSMenuItem(title: "Settings", action: #selector(togglePopover), keyEquivalent: ",")
+        let popoverItem = NSMenuItem(title: "Open wthrr", action: #selector(togglePopover), keyEquivalent: "")
+        popoverItem.target = self
+        menu.addItem(popoverItem)
+
+        let settingsItem = NSMenuItem(title: "Settings\u{2026}", action: #selector(openSettingsWindow), keyEquivalent: ",")
         settingsItem.target = self
         menu.addItem(settingsItem)
 
@@ -254,6 +260,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         WeatherSettings.shared.togglePause()
     }
 
+    @objc private func openSettingsWindow() {
+        showSettingsWindow()
+    }
+
     @objc private func showAboutFromMenu() {
         showSplashScreen(manual: true)
     }
@@ -301,6 +311,35 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         WeatherSettings.shared.togglePause()
         return true
+    }
+
+    // MARK: - Settings window
+
+    /// Opens the tabbed settings window, or brings it to front if already open.
+    func showSettingsWindow() {
+        // Dismiss the popover first so it doesn't compete for key-window status.
+        popover?.performClose(nil)
+
+        if let win = settingsWindow, win.isVisible {
+            win.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 530),
+            styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.title = "wthrr Settings"
+        window.center()
+        window.contentView = NSHostingView(
+            rootView: SettingsWindowView().environment(WeatherSettings.shared)
+        )
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow = window
     }
 
     // MARK: - Splash screen
@@ -405,6 +444,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         tearDownHotkeyMonitors()
         overlayWindowController?.tearDown()
         overlayWindowController = nil
+        settingsWindow?.close()
+        settingsWindow = nil
         if let item = statusItem {
             NSStatusBar.system.removeStatusItem(item)
         }

@@ -99,6 +99,7 @@ struct SplashView: View {
                 Image(systemName: settings.weatherIcon)
                     .font(.system(size: 48))
                     .symbolRenderingMode(.multicolor)
+                    .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
                     .padding(.top, 28)
 
                 Text("wthrr")

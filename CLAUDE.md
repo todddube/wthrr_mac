@@ -34,7 +34,8 @@ wthrr/
 ├── Clouds/         Cloud (factory), CloudRenderer (shared across rain/thunderstorm)
 ├── Animation/      WeatherAnimationModel — display-synced physics engine
 ├── Views/          WeatherView (TimelineView + Canvas), ContentView (menu bar popover),
-│                   SplashView, OnboardingView, WhatsNewView
+│                   SettingsWindowView (tabbed settings window), SplashView,
+│                   OnboardingView, WhatsNewView
 ├── Windows/        OverlayWindowController — per-display overlay windows
 └── Assets.xcassets
 ```
@@ -43,13 +44,21 @@ wthrr/
 Central source of truth for all weather modes. Persists all settings to `UserDefaults` via `didSet`. Passed into SwiftUI views via `.environment(WeatherSettings.shared)`.
 
 ### Menu bar popover — `ContentView`
-Shown inside a `MenuBarExtra`. Features:
-- Live 64px weather preview strip at the top
-- Icons-only segmented picker for weather type (with per-icon tooltips)
+Compact 350px popover shown on left-click. Contains only the controls users touch on every visit:
+- Header: weather icon + temperature/label, shuffle/reroll button, Pause button with hover-reveal hotkey badge
+- Live 64px weather preview strip
+- Live Weather toggle (enables Open-Meteo auto-mode)
+- Icons-only segmented weather type picker (disabled in live weather mode)
 - Intensity quick-taps (Light / Medium / Heavy) with "Custom" label when manually adjusted
-- Collapsible sections in order: Particles → Environment → Colors → Displays → Presets → Behavior
-- Reroll/shuffle button in the header next to Pause
-- Footer: "About" (plain, secondary) and "Quit" (plain, tertiary) — low prominence
+- Display selection (All / Choose with per-screen toggles)
+- Footer: "Settings" button (opens SettingsWindowView) and "Quit"
+
+### Settings window — `SettingsWindowView`
+Dedicated 520×530 tabbed settings window (System Preferences style icon toolbar). Four tabs:
+- **Appearance** — Particles (amount, speed, opacity, melt rate, AI density) + per-weather-type colour controls
+- **Environment** — Wind (strength, direction, fall angle) + Atmosphere (clouds, accumulation/drift, lightning)
+- **Presets** — Save/load/delete named presets, import/export JSON, built-in preset pills
+- **Behavior** — Launch at Login, Seasonal auto-switch, Night Dimming, Low Power Mode, About/links (Onboarding, What's New)
 
 ### Overlay windows — `OverlayWindowController`
 Manages one borderless `NSWindow` per active display. Windows sit just below normal window level, are fully transparent and ignore mouse events. Rebuilds windows on `NSApplication.didChangeScreenParametersNotification`.
@@ -92,7 +101,8 @@ Manages one borderless `NSWindow` per active display. Windows sit just below nor
 ### Key data flow
 ```
 WeatherSettings.shared
-    ├── ContentView (menu bar popover) — reads/writes settings
+    ├── ContentView (menu bar popover) — core controls: type, intensity, displays
+    ├── SettingsWindowView (settings window) — advanced: appearance, env, presets, behavior
     └── OverlayWindowController
             └── per-display NSWindow
                     └── WeatherView (TimelineView + Canvas) + WeatherAnimationModel
