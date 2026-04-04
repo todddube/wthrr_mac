@@ -5,14 +5,14 @@ Animated weather effects for your macOS desktop. Snow, rain, thunderstorms, fog,
 ![macOS](https://img.shields.io/badge/macOS-26.4+-blue) ![Swift](https://img.shields.io/badge/Swift-6-orange) ![License](https://img.shields.io/badge/license-MIT-green)
 
 <p align="center">
-  <img src="images/Snow.jpeg" alt="Snow mode" width="32%">
-  <img src="images/Rain.jpeg" alt="Rain mode" width="32%">
-  <img src="images/Fog.jpeg" alt="Fog mode" width="32%">
+  <a href="images/Snow.png"><img src="images/Snow.png" alt="Snow mode" width="32%"></a>
+  <a href="images/Rain.png"><img src="images/Rain.png" alt="Rain mode" width="32%"></a>
+  <a href="images/Thunderstorm.png"><img src="images/Thunderstorm.png" alt="Thunderstorm mode" width="32%"></a>
 </p>
 <p align="center">
-  <img src="images/AI.jpeg" alt="AI Storm mode" width="32%">
-  <img src="images/Haze.jpeg" alt="Haze / Aurora mode" width="32%">
-  <img src="images/Popup Menu.jpeg" alt="Menu bar popover" width="18%">
+  <a href="images/Fog.jpeg"><img src="images/Fog.jpeg" alt="Fog mode" width="32%"></a>
+  <a href="images/Aurora.png"><img src="images/Aurora.png" alt="Aurora Borealis" width="32%"></a>
+  <a href="images/AI Storm.png"><img src="images/AI Storm.png" alt="AI Storm mode" width="32%"></a>
 </p>
 
 ---
@@ -115,12 +115,23 @@ Two-panel design: a compact menu bar popover for everyday controls, plus a dedic
 - Display selection (All or Choose specific monitors)
 - Shuffle/reroll button and Pause control in the header
 
+<p align="center">
+  <a href="images/Popup Menu.jpeg"><img src="images/Popup Menu.jpeg" alt="Menu bar popover" width="22%"></a>
+</p>
+
 **Settings window** (System Preferences-style icon toolbar, 4 tabs):
 - **Appearance** — particle amount, speed, opacity; per-weather-type colour controls (hue sliders or AI Storm neon palettes); snow melt rate; AI Storm effect density
 - **Environment** — wind strength, direction, fall angle; clouds (size, speed, opacity); snow drift accumulation depth; lightning frequency
 - **Presets** — built-in + user presets as pill buttons; save, delete, import/export JSON
 - **Behavior** — Launch at Login, Seasonal auto-switch, Night Dimming, Low Power Mode; links to About, Onboarding, What's New
 - macOS vibrancy material background throughout
+
+<p align="center">
+  <a href="images/Settings Appearence.png"><img src="images/Settings Appearence.png" alt="Appearance tab" width="24%"></a>
+  <a href="images/Settings Env.png"><img src="images/Settings Env.png" alt="Environment tab" width="24%"></a>
+  <a href="images/Settings Presets.png"><img src="images/Settings Presets.png" alt="Presets tab" width="24%"></a>
+  <a href="images/Settings Behavior.png"><img src="images/Settings Behavior.png" alt="Behavior tab" width="24%"></a>
+</p>
 
 ---
 
