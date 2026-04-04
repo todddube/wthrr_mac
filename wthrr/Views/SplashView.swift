@@ -163,7 +163,9 @@ struct SplashView: View {
             Divider()
                 .padding(.horizontal, 28)
 
-            // Action buttons — What's New + Close
+            // Action buttons — What's New + Close (with countdown).
+            // Rendered outside the `appeared`-gated opacity blocks so both buttons
+            // are immediately interactive regardless of the entrance animation state.
             HStack(spacing: 10) {
                 Button {
                     showingWhatsNew = true
@@ -186,11 +188,16 @@ struct SplashView: View {
             }
             .padding(.horizontal, 28)
             .padding(.vertical, 16)
-            .opacity(appeared ? 1 : 0)
         }
         .frame(width: 380)
         .onAppear {
-            withAnimation(.easeOut(duration: 0.5)) { appeared = true }
+            // Defer the entrance animation by one run-loop turn so the NSWindow's
+            // Core Animation layer is fully composited before the SwiftUI animation
+            // transaction commits — without this delay, `appeared` can stick at false
+            // due to the CA layer not yet being attached when the view first renders.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                withAnimation(.easeOut(duration: 0.5)) { appeared = true }
+            }
         }
         .task {
             // Auto-dismiss countdown

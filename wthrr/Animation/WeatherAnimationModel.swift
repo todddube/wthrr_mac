@@ -26,6 +26,10 @@ final class WeatherAnimationModel {
     private var builtSeed  = 0
     private var builtSpeed: Double = 0
     private var builtWeatherType: WeatherType?
+    /// Tracks whether adaptive quality was throttling particles during the last build.
+    /// A change in throttle state (on→off or off→on) triggers a particle rebuild
+    /// so the effective count adjusts immediately without waiting for other changes.
+    private var builtThrottled: Bool = false
 
     /// Internal frame counter for periodic operations (smoothing, melting).
     private var frameCount: Int = 0
@@ -113,7 +117,8 @@ final class WeatherAnimationModel {
     // MARK: Configuration
 
     /// Rebuilds the particle array if key parameters changed since the last build.
-    /// Detects changes to count, seed, speed, screen size, and weather type.
+    /// Detects changes to count, seed, speed, screen size, weather type,
+    /// and adaptive quality throttle state.
     func configure(size: CGSize, settings: WeatherSettings) {
         guard size != .zero else { return }
 
@@ -121,25 +126,38 @@ final class WeatherAnimationModel {
         screenSize = screenSize == .zero ? size : screenSize
         configureClouds(settings: settings)
 
+        // Determine whether adaptive quality is currently throttling particle count.
+        let monitor = AdaptiveQualityMonitor.shared
+        let throttled = settings.adaptiveQualityEnabled && (
+            monitor.cpuUsage >= settings.cpuThreshold ||
+            (!monitor.isCharging && (monitor.batteryPercent ?? 100) <= settings.batteryThreshold)
+        )
+
         let needsRebuild = particles.isEmpty
             || size != screenSize
             || settings.flakeCount      != builtCount
             || settings.randomSeed      != builtSeed
             || settings.speedMultiplier != builtSpeed
             || settings.weatherType     != builtWeatherType
+            || throttled                != builtThrottled
 
         guard needsRebuild else { return }
 
         let weatherChanged = settings.weatherType != builtWeatherType
 
-        screenSize        = size
-        builtCount        = settings.flakeCount
-        builtSeed         = settings.randomSeed
-        builtSpeed        = settings.speedMultiplier
-        builtWeatherType  = settings.weatherType
+        screenSize       = size
+        builtCount       = settings.flakeCount
+        builtSeed        = settings.randomSeed
+        builtSpeed       = settings.speedMultiplier
+        builtWeatherType = settings.weatherType
+        builtThrottled   = throttled
+
+        // When throttled, cap particles at 50% of the user-set value so the
+        // user's slider position is preserved and restores automatically.
+        let effectiveCount = throttled ? max(20, settings.flakeCount / 2) : settings.flakeCount
 
         var rng = SeededRNG(seed: UInt64(bitPattern: Int64(settings.randomSeed)))
-        particles = (0..<settings.flakeCount).map { _ in
+        particles = (0..<effectiveCount).map { _ in
             makeParticle(
                 startY: CGFloat(rng.next01()) * (size.height + 40) - 40,
                 rng: &rng,
@@ -233,6 +251,8 @@ final class WeatherAnimationModel {
 
     /// Advances all particle positions by one frame.
     /// Handles snow accumulation, rain splashes, and puddle growth depending on settings.
+    /// When adaptive quality is active and battery/CPU limits are exceeded, the effective
+    /// fps is capped to reduce GPU load before this function advances physics.
     /// Called each frame by the TimelineView-driven Canvas.
     func advance(settings: WeatherSettings) {
         let now = CACurrentMediaTime()
@@ -240,8 +260,11 @@ final class WeatherAnimationModel {
         // Paused: keep lastTime current so we don't get a huge dt spike on resume
         if settings.isPaused { lastTime = now; return }
 
-        // Low-power mode: skip frames to target ~30 fps instead of the display refresh rate
-        if settings.lowPowerMode && lastTime > 0 && (now - lastTime) < 1.0 / 30.0 { return }
+        // Low-power mode OR adaptive quality battery throttle: target ~30 fps
+        let adaptiveBatteryLow = settings.adaptiveQualityEnabled
+            && !AdaptiveQualityMonitor.shared.isCharging
+            && (AdaptiveQualityMonitor.shared.batteryPercent ?? 100) <= settings.batteryThreshold
+        if (settings.lowPowerMode || adaptiveBatteryLow) && lastTime > 0 && (now - lastTime) < 1.0 / 30.0 { return }
 
         let dt: CGFloat = lastTime == 0 ? 1.0 / 60.0 : CGFloat(min(now - lastTime, 1.0 / 20.0))
         lastTime = now

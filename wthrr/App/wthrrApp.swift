@@ -104,6 +104,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupGlobalHotkey()
         startIconAnimation()
 
+        // Start adaptive quality polling if the feature is enabled.
+        if WeatherSettings.shared.adaptiveQualityEnabled {
+            AdaptiveQualityMonitor.shared.start()
+        }
+
         // Clean SIGTERM → NSApp.terminate so applicationWillTerminate fires.
         signal(SIGTERM, SIG_IGN)
         let sigTermSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
@@ -316,6 +321,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Settings window
 
     /// Opens the tabbed settings window, or brings it to front if already open.
+    /// Dismisses the popover first to avoid focus conflicts between the popover
+    /// and the new key window.
     func showSettingsWindow() {
         // Dismiss the popover first so it doesn't compete for key-window status.
         popover?.performClose(nil)
@@ -326,7 +333,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 530),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 700),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -437,9 +444,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Lifecycle
 
-    /// Cleans up all app resources on quit: icon animation, hotkey monitors,
-    /// overlay windows, and the status bar item.
+    /// Cleans up all app resources on quit: AdaptiveQualityMonitor polling,
+    /// icon animation, hotkey monitors, overlay windows, and the status bar item.
     func applicationWillTerminate(_ notification: Notification) {
+        AdaptiveQualityMonitor.shared.stop()
         stopIconAnimation()
         tearDownHotkeyMonitors()
         overlayWindowController?.tearDown()

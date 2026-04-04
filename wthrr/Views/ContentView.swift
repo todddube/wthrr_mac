@@ -12,7 +12,10 @@ import ServiceManagement
 /// Compact popover shown on menu-bar left-click.
 /// Contains only the controls a user touches on every visit:
 /// weather type, intensity, live-weather toggle, and the preview strip.
-/// Advanced settings (particles, colours, environment, displays, presets, behaviour)
+/// A display-selection section lets users target All or individual screens.
+/// The footer contains Settings/Quit buttons and a tappable version row
+/// that opens the splash/About screen.
+/// Advanced settings (particles, colours, environment, presets, behaviour)
 /// live in the separate Settings window opened via the gear button.
 struct ContentView: View {
     @Environment(WeatherSettings.self) private var settings
@@ -98,28 +101,41 @@ struct ContentView: View {
                 Divider().padding(.vertical, 10)
 
                 // ── Footer ──────────────────────────────────
-                HStack(spacing: 12) {
-                    Button {
-                        AppDelegate.shared?.showSettingsWindow()
-                    } label: {
-                        Label("Settings", systemImage: "gearshape")
-                            .font(.caption.weight(.medium))
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .keyboardShortcut(",")
+                // VStack with two rows: (1) an HStack of Settings + Quit buttons,
+                // and (2) a full-width tappable AboutView that opens the splash screen.
+                VStack(spacing: 8) {
+                    HStack(spacing: 12) {
+                        Button {
+                            AppDelegate.shared?.showSettingsWindow()
+                        } label: {
+                            Label("Settings", systemImage: "gearshape")
+                                .font(.caption.weight(.medium))
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .keyboardShortcut(",")
 
-                    Spacer()
+                        Spacer()
+
+                        Button {
+                            NSApplication.shared.terminate(nil)
+                        } label: {
+                            Label("Quit wthrr", systemImage: "power")
+                                .font(.caption.weight(.medium))
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .keyboardShortcut("q")
+                    }
 
                     Button {
-                        NSApplication.shared.terminate(nil)
+                        AppDelegate.shared?.showSplashScreen(manual: true)
                     } label: {
-                        Label("Quit wthrr", systemImage: "power")
-                            .font(.caption.weight(.medium))
+                        AboutView()
+                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .keyboardShortcut("q")
+                    .buttonStyle(.plain)
+                    .help("About wthrr")
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 14)
@@ -560,6 +576,8 @@ struct FlowLayout: Layout {
 // MARK: - About view
 
 /// Compact footer showing app version and a GitHub link.
+/// Wrapped in a `.plain` Button inside `ContentView` so tapping anywhere
+/// on this row opens the splash/About screen via `showSplashScreen(manual:)`.
 struct AboutView: View {
     private let repoURL = URL(string: "https://github.com/todddube/wthrr_mac")!
 

@@ -16,11 +16,6 @@ Different weather type on different monitors simultaneously.
 Snow on the main display, rain on the secondary — strong visual wow factor for multi-display users.
 **Effort: High** — requires per-screen WeatherSettings architecture rethink.
 
-### Adaptive Quality
-Auto-reduce particle count when CPU exceeds a threshold, or when battery drops below a configurable %.
-Prevents the app from spinning up fans on MacBooks; users notice when a fun app hurts battery life.
-**Effort: Medium** — pairs naturally with the existing Low Power Mode toggle.
-
 ### Additional Tuning Knobs
 - Puddle ripple speed (currently 40 pts/sec hardcoded)
 - Puddle growth rate per raindrop (currently 0.025 height/hit hardcoded)
@@ -62,6 +57,7 @@ See [specs_money.md](specs_money.md) for the full monetization plan including:
 
 All items below have been implemented and are in the current codebase.
 
+- **Adaptive Quality** — auto-halves particle count when CPU exceeds a configurable threshold (default 70%); drops to 30 fps when battery is below threshold (default 20%) and not charging; status indicator in Behavior tab; on/off toggle with CPU and battery sliders
 - **Dedicated Settings Window** — tabbed System Preferences-style window (520×530) with 4 tabs: Appearance, Environment, Presets, Behavior; opened via Settings button in the compact popover or right-click context menu (Cmd+,)
 - **Compact Popover Redesign** — menu bar popover streamlined to core everyday controls only (weather type, intensity, live weather, displays); advanced settings moved to the dedicated Settings window
 - **Preset System** — 9 built-in presets, user-saveable presets, JSON import/export, empty-state hint

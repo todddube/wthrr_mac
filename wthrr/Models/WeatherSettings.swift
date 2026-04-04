@@ -144,6 +144,24 @@ class WeatherSettings {
         didSet { UserDefaults.standard.set(lowPowerMode, forKey: "lowPowerMode") }
     }
 
+    /// When true, auto-reduces particle count when CPU is above `cpuThreshold`
+    /// and drops to 30 fps when battery is below `batteryThreshold` on battery power.
+    var adaptiveQualityEnabled: Bool {
+        didSet { UserDefaults.standard.set(adaptiveQualityEnabled, forKey: "adaptiveQualityEnabled") }
+    }
+
+    /// CPU utilisation fraction (0.0–1.0) above which adaptive quality halves the particle count.
+    /// Default 0.70 (70%).
+    var cpuThreshold: Double {
+        didSet { UserDefaults.standard.set(cpuThreshold, forKey: "cpuThreshold") }
+    }
+
+    /// Battery percentage at or below which adaptive quality drops to 30 fps (on battery only).
+    /// Default 20.
+    var batteryThreshold: Int {
+        didSet { UserDefaults.standard.set(batteryThreshold, forKey: "batteryThreshold") }
+    }
+
     // MARK: Live weather
 
     /// When true, Open-Meteo pulls real conditions and auto-applies weather type + intensity.
@@ -319,6 +337,16 @@ class WeatherSettings {
         lowPowerMode = UserDefaults.standard.object(forKey: "lowPowerMode") != nil
             ? UserDefaults.standard.bool(forKey: "lowPowerMode")
             : false
+
+        adaptiveQualityEnabled = UserDefaults.standard.object(forKey: "adaptiveQualityEnabled") != nil
+            ? UserDefaults.standard.bool(forKey: "adaptiveQualityEnabled")
+            : true
+
+        let savedCPUThreshold = UserDefaults.standard.double(forKey: "cpuThreshold")
+        cpuThreshold = savedCPUThreshold > 0 ? savedCPUThreshold : 0.70
+
+        let savedBattThreshold = UserDefaults.standard.integer(forKey: "batteryThreshold")
+        batteryThreshold = savedBattThreshold > 0 ? savedBattThreshold : 20
 
         let savedMelt = UserDefaults.standard.double(forKey: "snowMeltRate")
         snowMeltRate = savedMelt > 0 ? savedMelt : 0.08
