@@ -162,6 +162,12 @@ class WeatherSettings {
         didSet { UserDefaults.standard.set(batteryThreshold, forKey: "batteryThreshold") }
     }
 
+    /// When true, the splash screen is shown automatically on every launch.
+    /// Set to false via the "Don't show on startup" checkbox in the splash screen.
+    var showSplashOnStartup: Bool {
+        didSet { UserDefaults.standard.set(showSplashOnStartup, forKey: "showSplashOnStartup") }
+    }
+
     // MARK: Live weather
 
     /// When true, Open-Meteo pulls real conditions and auto-applies weather type + intensity.
@@ -347,6 +353,10 @@ class WeatherSettings {
 
         let savedBattThreshold = UserDefaults.standard.integer(forKey: "batteryThreshold")
         batteryThreshold = savedBattThreshold > 0 ? savedBattThreshold : 20
+
+        showSplashOnStartup = UserDefaults.standard.object(forKey: "showSplashOnStartup") != nil
+            ? UserDefaults.standard.bool(forKey: "showSplashOnStartup")
+            : true
 
         let savedMelt = UserDefaults.standard.double(forKey: "snowMeltRate")
         snowMeltRate = savedMelt > 0 ? savedMelt : 0.08

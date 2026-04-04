@@ -80,33 +80,38 @@ struct SettingsWindowView: View {
             Divider()
 
             // ── Persistent footer — visible on every tab ──────
-            HStack(spacing: 8) {
-                Spacer()
-                Button {
-                    AppDelegate.shared?.showSplashScreen(manual: true)
-                } label: {
-                    Label("About", systemImage: "info.circle").font(.caption)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+            VStack(spacing: 6) {
+                // App info row: version + GitHub link
+                AboutView()
 
-                Button {
-                    AppDelegate.shared?.showOnboarding()
-                } label: {
-                    Label("Onboarding", systemImage: "hand.wave").font(.caption)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+                // Action buttons row
+                HStack(spacing: 8) {
+                    Button {
+                        AppDelegate.shared?.showSplashScreen(manual: true)
+                    } label: {
+                        Label("About", systemImage: "info.circle").font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
 
-                Button {
-                    AppDelegate.shared?.showWhatsNew()
-                } label: {
-                    Label("What's New", systemImage: "sparkles").font(.caption)
+                    Button {
+                        AppDelegate.shared?.showOnboarding()
+                    } label: {
+                        Label("Onboarding", systemImage: "hand.wave").font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+
+                    Button {
+                        AppDelegate.shared?.showWhatsNew()
+                    } label: {
+                        Label("What's New", systemImage: "sparkles").font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                Spacer()
             }
+            .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
         }
         .frame(width: 520, height: 700)
@@ -491,8 +496,6 @@ private struct PresetsTab: View {
 /// System integration, automation, and performance options.
 /// Covers Launch at Login, Seasonal Weather, Night Dimming, Low Power Mode,
 /// and Adaptive Quality (CPU + battery throttling with live status indicator).
-/// Also contains an About/links row with buttons for About, Onboarding,
-/// and What's New.
 private struct BehaviorTab: View {
     @Environment(WeatherSettings.self) private var settings
     @State private var launchAtLogin: Bool = (SMAppService.mainApp.status == .enabled)

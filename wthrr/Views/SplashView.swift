@@ -163,6 +163,19 @@ struct SplashView: View {
             Divider()
                 .padding(.horizontal, 28)
 
+            // "Don't show on startup" toggle — always visible, persisted via WeatherSettings.
+            Toggle(isOn: Binding(
+                get: { !settings.showSplashOnStartup },
+                set: { settings.showSplashOnStartup = !$0 }
+            )) {
+                Text("Don't show on startup")
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+            .toggleStyle(.checkbox)
+            .padding(.horizontal, 28)
+            .padding(.bottom, 4)
+
             // Action buttons — What's New + Close (with countdown).
             // Rendered outside the `appeared`-gated opacity blocks so both buttons
             // are immediately interactive regardless of the entrance animation state.

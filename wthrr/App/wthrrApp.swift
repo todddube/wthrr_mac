@@ -77,7 +77,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             showOnboarding()
         } else if WhatsNewView.shouldShow {
             showWhatsNew()
-        } else {
+        } else if WeatherSettings.shared.showSplashOnStartup {
             showSplashScreen()
         }
 
@@ -375,6 +375,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         window.contentView = NSHostingView(rootView: splashView)
         window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
         splashWindow = window
     }
 
@@ -414,6 +415,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         window.contentView = NSHostingView(rootView: onboardingView)
         window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
         splashWindow = window
     }
 
@@ -439,6 +441,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         window.contentView = NSHostingView(rootView: whatsNewView)
         window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
         splashWindow = window
     }
 
