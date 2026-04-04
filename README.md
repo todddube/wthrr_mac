@@ -4,14 +4,14 @@ Animated weather effects for your macOS desktop. Snow, rain, thunderstorms, fog,
 
 ![macOS](https://img.shields.io/badge/macOS-26.4+-blue) ![Swift](https://img.shields.io/badge/Swift-6-orange) ![License](https://img.shields.io/badge/license-MIT-green)
 
-<!-- Replace with your own screenshots. See FUTURE.md marketing section for recording tips. -->
 <p align="center">
-  <img src="images/snow-hero.png" alt="Snow mode" width="45%">
-  <img src="images/rain-hero.png" alt="Rain mode" width="45%">
+  <img src="images/Snow.jpeg" alt="Snow mode" width="32%">
+  <img src="images/Rain.jpeg" alt="Rain mode" width="32%">
+  <img src="images/Fog.jpeg" alt="Fog mode" width="32%">
 </p>
 <p align="center">
-  <img src="images/aurora-hero.png" alt="Aurora Borealis" width="45%">
-  <img src="images/settings-popover.png" alt="Settings popover" width="22%">
+  <img src="images/AI.jpeg" alt="AI Storm mode" width="32%">
+  <img src="images/Haze.jpeg" alt="Haze / Aurora mode" width="32%">
 </p>
 
 ---
@@ -120,12 +120,6 @@ Two-panel design: a compact menu bar popover for everyday controls, plus a dedic
 - **Presets** — built-in + user presets as pill buttons; save, delete, import/export JSON
 - **Behavior** — Launch at Login, Seasonal auto-switch, Night Dimming, Low Power Mode; links to About, Onboarding, What's New
 - macOS vibrancy material background throughout
-
-<p align="center">
-  <img src="images/settings-presets.png" alt="Presets section" width="30%">
-  <img src="images/settings-colors.png" alt="Color theming" width="30%">
-  <img src="images/settings-behavior.png" alt="Behavior section" width="30%">
-</p>
 
 ---
 
