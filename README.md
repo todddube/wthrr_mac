@@ -12,6 +12,7 @@ Animated weather effects for your macOS desktop. Snow, rain, thunderstorms, fog,
 <p align="center">
   <img src="images/AI.jpeg" alt="AI Storm mode" width="32%">
   <img src="images/Haze.jpeg" alt="Haze / Aurora mode" width="32%">
+  <img src="images/Popup Menu.jpeg" alt="Menu bar popover" width="18%">
 </p>
 
 ---
