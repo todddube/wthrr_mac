@@ -104,6 +104,12 @@ Three buttons — **Light**, **Medium**, **Heavy** — that instantly set amount
 - **First-launch walkthrough**: 3-step flow — Welcome, Pick Weather, Set Intensity
 - **What's New screen**: Version-gated changelog shown once after each update, also accessible from the splash screen
 
+### Screenshot Preview
+- Right-click the menu bar icon → **Screenshot Preview…** to open a 1280×800 window
+- Solid black background renders each weather effect cleanly with no desktop clutter
+- Bottom toolbar to switch between all six weather types without leaving the window
+- Use **⌘⇧4** then click the window to capture a clean, frameable screenshot of any effect
+
 ### Settings Panel
 Two-panel design: a compact menu bar popover for everyday controls, plus a dedicated Settings window for advanced configuration.
 
@@ -178,7 +184,7 @@ wthrr/
 ├── Clouds/         Cloud (factory), CloudRenderer
 ├── Animation/      WeatherAnimationModel (display-synced physics engine)
 ├── Views/          WeatherView, ContentView, SettingsWindowView, SplashView,
-│                   OnboardingView, WhatsNewView
+│                   OnboardingView, WhatsNewView, WeatherPreviewView
 ├── Windows/        OverlayWindowController (per-display overlay windows)
 └── Assets.xcassets
 ```

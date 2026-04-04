@@ -42,6 +42,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var splashWindow: NSWindow?
     /// The persistent settings window (Appearance / Environment / Displays / Presets / Behavior tabs).
     private var settingsWindow: NSWindow?
+    /// The screenshot preview window (black background + weather canvas + type switcher).
+    private var previewWindow: NSWindow?
     /// Timer that cycles the menu bar icon through its animation frames.
     private var iconAnimationTimer: Timer?
     /// Current frame index (0-2) within the 3-frame menu bar icon animation.
@@ -184,6 +186,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         settingsItem.target = self
         menu.addItem(settingsItem)
 
+        let previewItem = NSMenuItem(title: "Screenshot Preview\u{2026}", action: #selector(openPreviewWindow), keyEquivalent: "")
+        previewItem.target = self
+        menu.addItem(previewItem)
+
         let aboutItem = NSMenuItem(title: "About wthrr", action: #selector(showAboutFromMenu), keyEquivalent: "")
         aboutItem.target = self
         menu.addItem(aboutItem)
@@ -269,6 +275,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         showSettingsWindow()
     }
 
+    @objc private func openPreviewWindow() {
+        showPreviewWindow()
+    }
+
     @objc private func showAboutFromMenu() {
         showSplashScreen(manual: true)
     }
@@ -347,6 +357,40 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow = window
+    }
+
+    // MARK: - Screenshot preview window
+
+    /// Opens a 1280×800 preview window with a black background and weather canvas,
+    /// useful for taking clean screenshots of each weather type.
+    func showPreviewWindow() {
+        popover?.performClose(nil)
+
+        if let win = previewWindow, win.isVisible {
+            win.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1280, height: 800),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.title = "wthrr Preview"
+        window.center()
+        window.contentView = NSHostingView(
+            rootView: WeatherPreviewView { [weak self] in
+                self?.previewWindow?.close()
+                self?.previewWindow = nil
+            }
+            .environment(WeatherSettings.shared)
+        )
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        previewWindow = window
     }
 
     // MARK: - Splash screen
@@ -457,6 +501,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         overlayWindowController = nil
         settingsWindow?.close()
         settingsWindow = nil
+        previewWindow?.close()
+        previewWindow = nil
         if let item = statusItem {
             NSStatusBar.system.removeStatusItem(item)
         }
