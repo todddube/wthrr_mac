@@ -123,21 +123,22 @@ header "Packaging DMG: ${APP_NAME}-${VERSION}.dmg"
 rm -f "$DMG_OUT"
 mkdir -p "$BUILD_DIR"
 
-# DMG layout (700×420 window, 2× background 1400×840):
-#   App icon        x=185  y=210  (left third, vertically centered)
-#   Applications    x=515  y=210  (right third, vertically centered)
-#   Icon size 128 px
+# DMG layout (860×520 window, 2× background 1720×1040):
+#   App icon        x=215  y=260  (left zone, vertically centered)
+#   Applications    x=645  y=260  (right zone, vertically centered)
+#   Icon size 128 px (create-dmg maximum)
 
 create-dmg \
     --volname           "$APP_NAME" \
     --volicon           "$APP_PATH/Contents/Resources/AppIcon.icns" \
     --background        "$BG_IMAGE" \
     --window-pos        200 120 \
-    --window-size       700 420 \
+    --window-size       860 520 \
+    --text-size         14 \
     --icon-size         128 \
-    --icon              "$APP_NAME.app" 185 210 \
+    --icon              "$APP_NAME.app" 215 260 \
     --hide-extension    "$APP_NAME.app" \
-    --app-drop-link     515 210 \
+    --app-drop-link     645 260 \
     --no-internet-enable \
     "$DMG_OUT" \
     "$STAGE_DIR/"

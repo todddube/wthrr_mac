@@ -150,7 +150,11 @@ Two-panel design: a compact menu bar popover for everyday controls, plus a dedic
 
 Download the latest `.dmg` from the [Releases](https://github.com/todddube/wthrr_mac/releases) page, open it, and drag **wthrr** into your Applications folder.
 
-> **First launch:** macOS will show an "unidentified developer" warning because the app is distributed outside the App Store. Right-click (or Control-click) the app icon and choose **Open** — you only need to do this once.
+> **Gatekeeper notice:** Because wthrr is distributed outside the App Store without notarization, macOS may block it with a crossed-out icon or "unidentified developer" warning. Run this once in Terminal after dragging the app to Applications:
+> ```sh
+> xattr -dr com.apple.quarantine /Applications/wthrr.app
+> ```
+> Then launch normally. You only need to do this once.
 
 ## Building from Source
 

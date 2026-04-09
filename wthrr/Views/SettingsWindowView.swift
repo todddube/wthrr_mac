@@ -15,6 +15,7 @@ import AppKit
 /// to fit their content without scrolling.
 struct SettingsWindowView: View {
     @State private var selectedTab: SettingsTab = .appearance
+    @State private var settingsWindow: NSWindow?
 
     enum SettingsTab: String, CaseIterable {
         case appearance  = "Appearance"
@@ -28,6 +29,16 @@ struct SettingsWindowView: View {
             case .environment: return "wind"
             case .presets:     return "star.fill"
             case .behavior:    return "gearshape"
+            }
+        }
+
+        /// Target window height for each tab (toolbar + content + footer).
+        var preferredWindowHeight: CGFloat {
+            switch self {
+            case .appearance:  return 480
+            case .environment: return 580
+            case .presets:     return 580
+            case .behavior:    return 500
             }
         }
     }
@@ -114,8 +125,24 @@ struct SettingsWindowView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
         }
-        .frame(width: 520, height: 700)
+        .frame(width: 520)
         .background(.regularMaterial)
+        .background(WindowAccessor(window: $settingsWindow))
+        .onAppear {
+            resizeWindow(to: selectedTab.preferredWindowHeight, animate: false)
+        }
+        .onChange(of: selectedTab) { _, tab in
+            resizeWindow(to: tab.preferredWindowHeight, animate: true)
+        }
+    }
+
+    private func resizeWindow(to height: CGFloat, animate: Bool) {
+        guard let win = settingsWindow else { return }
+        var frame = win.frame
+        let dy = height - frame.height
+        frame.origin.y -= dy          // keep top-left anchor fixed
+        frame.size.height = height
+        win.setFrame(frame, display: true, animate: animate)
     }
 }
 
@@ -424,61 +451,126 @@ private struct PresetsTab: View {
     @State private var newPresetName  = ""
     private var presetStore: PresetStore { PresetStore.shared }
 
+    private let columns = [GridItem(.adaptive(minimum: 128), spacing: 8)]
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                SettingsTabHeader("Presets", icon: "star.fill")
-                Spacer()
-                Button {
-                    newPresetName = ""
-                    showSavePreset.toggle()
-                } label: {
-                    Label("Save Current", systemImage: "plus.circle").font(.caption2)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
 
-                Menu {
-                    Button("Export Presets\u{2026}") { presetStore.exportPresets() }
-                    Button("Import Presets\u{2026}") { presetStore.importPresets() }
-                } label: {
-                    Image(systemName: "square.and.arrow.up.on.square").font(.caption)
-                }
-                .menuStyle(.borderlessButton)
-                .frame(width: 20)
-                .foregroundStyle(.secondary)
-            }
+                // ── Header ───────────────────────────────────────
+                HStack(alignment: .firstTextBaseline) {
+                    SettingsTabHeader("Presets", icon: "star.fill")
+                    Spacer()
+                    Button {
+                        newPresetName = ""
+                        showSavePreset.toggle()
+                    } label: {
+                        Label("Save Current", systemImage: "plus.circle").font(.caption)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
 
-            if showSavePreset {
-                HStack(spacing: 4) {
-                    TextField("Preset name", text: $newPresetName)
-                        .textFieldStyle(.roundedBorder)
+                    Menu {
+                        Button("Export Presets\u{2026}") { presetStore.exportPresets() }
+                        Button("Import Presets\u{2026}") { presetStore.importPresets() }
+                    } label: {
+                        Image(systemName: "ellipsis.circle").font(.caption)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .frame(width: 26)
+                    .foregroundStyle(.secondary)
+                }
+
+                // ── Instructions ─────────────────────────────────
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "info.circle")
                         .font(.caption)
-                        .onSubmit { saveNewPreset() }
-                    Button("Save") { saveNewPreset() }
-                        .font(.caption)
-                        .disabled(newPresetName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 1)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Tap a preset to instantly apply its settings.")
+                        Text("Use \u{201C}Save Current\u{201D} to snapshot what you\u{2019}ve configured.")
+                        Text("Right-click your own presets to delete them.")
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+
+                // ── Save-preset field ─────────────────────────────
+                if showSavePreset {
+                    HStack(spacing: 6) {
+                        TextField("Name your preset\u{2026}", text: $newPresetName)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.caption)
+                            .onSubmit { saveNewPreset() }
+                        Button("Save") { saveNewPreset() }
+                            .font(.caption)
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                            .disabled(newPresetName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        Button {
+                            showSavePreset = false
+                        } label: {
+                            Image(systemName: "xmark").font(.caption2)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
+                // ── Built-in presets ──────────────────────────────
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("BUILT-IN")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.tertiary)
+                        .tracking(0.8)
+
+                    LazyVGrid(columns: columns, spacing: 8) {
+                        ForEach(presetStore.allPresets.filter { $0.isBuiltIn }) { preset in
+                            PresetCard(
+                                preset: preset,
+                                onTap: { settings.apply(preset) },
+                                onDelete: nil
+                            )
+                        }
+                    }
+                }
+
+                // ── Your presets ──────────────────────────────────
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("YOUR PRESETS")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.tertiary)
+                        .tracking(0.8)
+
+                    let userPresets = presetStore.allPresets.filter { !$0.isBuiltIn }
+                    if userPresets.isEmpty {
+                        Text("Nothing saved yet — hit \u{201C}Save Current\u{201D} to create your first preset.")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .padding(.vertical, 6)
+                    } else {
+                        LazyVGrid(columns: columns, spacing: 8) {
+                            ForEach(userPresets) { preset in
+                                PresetCard(
+                                    preset: preset,
+                                    onTap: { settings.apply(preset) },
+                                    onDelete: { presetStore.delete(named: preset.name) }
+                                )
+                            }
+                        }
+                    }
                 }
             }
-
-            if presetStore.allPresets.filter({ !$0.isBuiltIn }).isEmpty {
-                Text("Tap + to save your current settings as a preset")
-                    .font(.caption2).foregroundStyle(.tertiary).padding(.top, 2)
-            }
-
-            FlowLayout(spacing: 4) {
-                ForEach(presetStore.allPresets) { preset in
-                    PresetPill(
-                        preset: preset,
-                        onTap: { settings.apply(preset) },
-                        onDelete: preset.isBuiltIn ? nil : { presetStore.delete(named: preset.name) }
-                    )
-                }
-            }
-
-            Spacer()
+            .padding(16)
+            .animation(.easeInOut(duration: 0.18), value: showSavePreset)
         }
-        .padding(16)
     }
 
     private func saveNewPreset() {
@@ -486,8 +578,80 @@ private struct PresetsTab: View {
         guard !name.isEmpty else { return }
         let preset = settings.snapshot(named: name)
         presetStore.save(preset)
-        newPresetName    = ""
-        showSavePreset   = false
+        newPresetName  = ""
+        showSavePreset = false
+    }
+}
+
+// MARK: - Preset card
+
+/// Grid card for a named preset. Shows a weather icon, type colour, and name.
+/// Supports context-menu delete for user presets.
+private struct PresetCard: View {
+    let preset:   WeatherPreset
+    let onTap:    () -> Void
+    let onDelete: (() -> Void)?
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 7) {
+                Image(systemName: iconForType(preset.weatherType))
+                    .font(.system(size: 22))
+                    .foregroundStyle(colorForType(preset.weatherType))
+                    .frame(height: 26)
+                Text(preset.name)
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .foregroundStyle(.primary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isHovered ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.quaternary))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(.quaternary, lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .contextMenu {
+            if let onDelete {
+                Button(role: .destructive) { onDelete() } label: {
+                    Label("Delete Preset", systemImage: "trash")
+                }
+            } else {
+                Text("Built-in preset").font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func iconForType(_ type: WeatherType) -> String {
+        switch type {
+        case .snow:         return "snowflake"
+        case .rain:         return "cloud.rain.fill"
+        case .thunderstorm: return "cloud.bolt.rain.fill"
+        case .fog:          return "cloud.fog.fill"
+        case .aiStorm:      return "bolt.fill"
+        case .aurora:       return "aqi.medium"
+        }
+    }
+
+    private func colorForType(_ type: WeatherType) -> Color {
+        switch type {
+        case .snow:         return .cyan
+        case .rain:         return .blue
+        case .thunderstorm: return .purple
+        case .fog:          return .gray
+        case .aiStorm:      return .green
+        case .aurora:       return .teal
+        }
     }
 }
 
@@ -498,7 +662,8 @@ private struct PresetsTab: View {
 /// and Adaptive Quality (CPU + battery throttling with live status indicator).
 private struct BehaviorTab: View {
     @Environment(WeatherSettings.self) private var settings
-    @State private var launchAtLogin: Bool = (SMAppService.mainApp.status == .enabled)
+    // Deferred to .task to avoid blocking the main thread on tab switch
+    @State private var launchAtLogin: Bool = false
 
     var body: some View {
         @Bindable var settings = settings
@@ -625,6 +790,11 @@ private struct BehaviorTab: View {
             Spacer()
         }
         .padding(16)
+        .task {
+            // SMAppService.mainApp.status is a blocking system call — defer it so
+            // the Behavior tab renders immediately without a visible stutter.
+            launchAtLogin = SMAppService.mainApp.status == .enabled
+        }
     }
 
     /// Returns a human-readable status string describing the current adaptive quality state:
@@ -712,5 +882,23 @@ private struct SettingsTabHeader: View {
             Text(title)
                 .font(.subheadline.weight(.semibold))
         }
+    }
+}
+
+// MARK: - Window accessor
+
+/// Zero-size NSViewRepresentable that captures the hosting NSWindow reference.
+/// Used by SettingsWindowView to programmatically resize the window per tab.
+private struct WindowAccessor: NSViewRepresentable {
+    @Binding var window: NSWindow?
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { self.window = view.window }
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        DispatchQueue.main.async { self.window = view.window }
     }
 }

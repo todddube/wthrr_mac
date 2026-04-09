@@ -1,0 +1,47 @@
+# =============================================================================
+# Copy this file to .github/workflows/notify-hub.yml in BOTH private repos:
+#   wthrr_mac     → set PLATFORM to "mac"
+#   wthrr_windows → set PLATFORM to "windows"
+#
+# Required secret in each private repo:
+#   HUB_REPO_PAT — fine-grained PAT with "Contents: write" and
+#                  "Actions: write" access to todddube/wthrr
+# =============================================================================
+
+name: Notify Hub Repo
+
+on:
+  push:
+    branches: [main]
+    # Optionally scope to files that actually affect the hub README:
+    # paths:
+    #   - 'README.md'
+    #   - 'docs/**'
+    #   - 'assets/**'
+    #   - '*.swift'        # macOS
+    #   - 'src/**'         # windows
+
+  release:
+    types: [published]
+
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger hub repo sync
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.HUB_REPO_PAT }}
+          repository: todddube/wthrr
+          event-type: platform-repo-updated
+          client-payload: |
+            {
+              "platform": "mac",
+              "ref": "${{ github.ref }}",
+              "sha": "${{ github.sha }}",
+              "triggered_by": "${{ github.event_name }}"
+            }
+        # ↑ Change "mac" to "windows" in the wthrr_windows copy

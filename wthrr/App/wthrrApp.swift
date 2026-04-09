@@ -44,10 +44,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: NSWindow?
     /// The screenshot preview window (black background + weather canvas + type switcher).
     private var previewWindow: NSWindow?
-    /// Timer that cycles the menu bar icon through its animation frames.
-    private var iconAnimationTimer: Timer?
-    /// Current frame index (0-2) within the 3-frame menu bar icon animation.
-    private var iconAnimationFrame: Int = 0
     /// True when the splash was triggered manually via the settings button,
     /// meaning menu-bar interactions should NOT auto-dismiss it.
     private var splashIsManual = false
@@ -104,7 +100,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         updateStatusItemIcon()
         setupGlobalHotkey()
-        startIconAnimation()
 
         // Start adaptive quality polling if the feature is enabled.
         if WeatherSettings.shared.adaptiveQualityEnabled {
@@ -210,61 +205,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Updates the status item icon to match the current weather type.
     @objc private func weatherTypeDidChange() {
         updateStatusItemIcon()
-        startIconAnimation()
     }
 
     /// Syncs the status bar button image to the current weather type and pause state.
-    /// Public so `AppDelegate` can call it after a weather-type notification fires.
     func updateStatusItemIcon() {
         let iconName: String
         if WeatherSettings.shared.isPaused {
             iconName = "pause.circle"
         } else {
             switch WeatherSettings.shared.weatherType {
-            case .rain:
-                let frames = ["cloud.rain", "cloud.rain.fill", "cloud.heavyrain.fill"]
-                iconName = frames[iconAnimationFrame % frames.count]
-            case .aiStorm:
-                let frames = ["bolt.fill", "bolt.trianglebadge.exclamationmark.fill", "bolt.circle.fill"]
-                iconName = frames[iconAnimationFrame % frames.count]
-            case .snow:
-                let frames = ["snowflake", "cloud.snow.fill", "snowflake.circle"]
-                iconName = frames[iconAnimationFrame % frames.count]
-            case .thunderstorm:
-                let frames = ["cloud.bolt.rain", "cloud.bolt.rain.fill", "cloud.bolt.fill"]
-                iconName = frames[iconAnimationFrame % frames.count]
-            case .fog:
-                let frames = ["cloud.fog", "cloud.fog.fill", "cloud"]
-                iconName = frames[iconAnimationFrame % frames.count]
-            case .aurora:
-                let frames = ["aqi.low", "aqi.medium", "aqi.high"]
-                iconName = frames[iconAnimationFrame % frames.count]
+            case .snow:         iconName = "snowflake"
+            case .rain:         iconName = "cloud.rain.fill"
+            case .thunderstorm: iconName = "cloud.bolt.rain.fill"
+            case .fog:          iconName = "cloud.fog.fill"
+            case .aiStorm:      iconName = "bolt.fill"
+            case .aurora:       iconName = "aqi.medium"
             }
         }
         if let img = NSImage(systemSymbolName: iconName, accessibilityDescription: "wthrr") {
             statusItem?.button?.image = img
         }
-    }
-
-    /// Starts a 2-second repeating timer that cycles the menu bar icon through 3 animation frames.
-    private func startIconAnimation() {
-        stopIconAnimation()
-        iconAnimationTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
-            self?.advanceIconFrame()
-        }
-    }
-
-    /// Invalidates the animation timer and resets the frame counter to 0.
-    private func stopIconAnimation() {
-        iconAnimationTimer?.invalidate()
-        iconAnimationTimer = nil
-        iconAnimationFrame = 0
-    }
-
-    /// Advances to the next icon frame (wraps at 3) and refreshes the status item image.
-    private func advanceIconFrame() {
-        iconAnimationFrame = (iconAnimationFrame + 1) % 3
-        updateStatusItemIcon()
     }
 
     @objc private func togglePauseFromMenu() {
@@ -283,10 +243,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         showSplashScreen(manual: true)
     }
 
-    /// Responds to `weatherPauseChanged` notifications: stops/starts icon animation and
-    /// immediately syncs the icon to the new pause state.
+    /// Responds to `weatherPauseChanged` notifications and syncs the icon to the new pause state.
     @objc private func pauseStateDidChange() {
-        if WeatherSettings.shared.isPaused { stopIconAnimation() } else { startIconAnimation() }
         updateStatusItemIcon()
     }
 
@@ -343,7 +301,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 700),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 480),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -495,7 +453,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// icon animation, hotkey monitors, overlay windows, and the status bar item.
     func applicationWillTerminate(_ notification: Notification) {
         AdaptiveQualityMonitor.shared.stop()
-        stopIconAnimation()
         tearDownHotkeyMonitors()
         overlayWindowController?.tearDown()
         overlayWindowController = nil
