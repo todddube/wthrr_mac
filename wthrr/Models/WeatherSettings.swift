@@ -128,6 +128,22 @@ class WeatherSettings {
         didSet { UserDefaults.standard.set(aiStormDensity, forKey: "aiStormDensity") }
     }
 
+    /// Number of birds rendered in Aurora mode. Range: 0 (off) – 20. Default 8.
+    var auroraBirdCount: Int {
+        didSet { UserDefaults.standard.set(auroraBirdCount, forKey: "auroraBirdCount") }
+    }
+
+    /// Size multiplier for aurora birds. Range: 0.5 (tiny) – 3.0 (huge). Default 1.0.
+    var auroraBirdSize: Double {
+        didSet { UserDefaults.standard.set(auroraBirdSize, forKey: "auroraBirdSize") }
+    }
+
+    /// Wildness of aurora birds — controls variation in size, speed, altitude, and flap rate.
+    /// Range: 0.0 (uniform flock) – 1.0 (chaotic scatter). Default 0.4.
+    var auroraBirdWildness: Double {
+        didSet { UserDefaults.standard.set(auroraBirdWildness, forKey: "auroraBirdWildness") }
+    }
+
     /// Cloud opacity multiplier. Range: 0.3 (faint) – 2.0 (opaque). Default 1.0.
     var cloudOpacity: Double {
         didSet { UserDefaults.standard.set(cloudOpacity, forKey: "cloudOpacity") }
@@ -363,6 +379,13 @@ class WeatherSettings {
 
         let savedDensity = UserDefaults.standard.double(forKey: "aiStormDensity")
         aiStormDensity = savedDensity > 0 ? savedDensity : 1.0
+
+        auroraBirdCount = UserDefaults.standard.object(forKey: "auroraBirdCount") != nil
+            ? UserDefaults.standard.integer(forKey: "auroraBirdCount") : 8
+        let savedBirdSize = UserDefaults.standard.double(forKey: "auroraBirdSize")
+        auroraBirdSize = savedBirdSize > 0 ? savedBirdSize : 1.0
+        let savedBirdWild = UserDefaults.standard.double(forKey: "auroraBirdWildness")
+        auroraBirdWildness = savedBirdWild >= 0 ? savedBirdWild : 0.4
 
         let savedCloudOpacity = UserDefaults.standard.double(forKey: "cloudOpacity")
         cloudOpacity = savedCloudOpacity > 0 ? savedCloudOpacity : 1.0

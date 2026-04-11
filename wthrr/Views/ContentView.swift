@@ -171,6 +171,8 @@ struct ContentView: View {
                 } else {
                     Text(settings.isPaused ? "Paused" : settings.weatherLabel)
                         .font(.system(size: 22, weight: .semibold, design: .rounded))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                     Text("Decorative \u{00B7} Manual")
                         .font(.caption)
                         .foregroundStyle(.tertiary)

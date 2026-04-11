@@ -32,13 +32,13 @@ struct SettingsWindowView: View {
             }
         }
 
-        /// Target window height for each tab (toolbar + content + footer).
+        /// Target window height for each tab (toolbar + weather picker + content + footer).
         var preferredWindowHeight: CGFloat {
             switch self {
-            case .appearance:  return 480
-            case .environment: return 580
-            case .presets:     return 580
-            case .behavior:    return 500
+            case .appearance:  return 540
+            case .environment: return 640
+            case .presets:     return 640
+            case .behavior:    return 560
             }
         }
     }
@@ -74,6 +74,13 @@ struct SettingsWindowView: View {
             .padding(.horizontal, 16)
             .padding(.top, 12)
             .padding(.bottom, 8)
+
+            Divider()
+
+            // ── Weather type picker — persistent across all tabs ──
+            WeatherTypePicker()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
 
             Divider()
 
@@ -146,6 +153,75 @@ struct SettingsWindowView: View {
     }
 }
 
+// MARK: - Weather type picker (persistent, shown on every tab)
+
+/// Six icon+label buttons — one per weather type — that let the user switch
+/// the active weather directly from within the settings window. Disabled when
+/// Live Weather is on. Selecting a type updates the live overlay immediately,
+/// and the tab-specific controls (Melt Rate, Bird settings, etc.) update to match.
+private struct WeatherTypePicker: View {
+    @Environment(WeatherSettings.self) private var settings
+
+    private struct WeatherOption {
+        let type:  WeatherType
+        let icon:  String
+        let label: String
+    }
+
+    private let options: [WeatherOption] = [
+        .init(type: .snow,         icon: "snowflake",            label: "Snow"),
+        .init(type: .rain,         icon: "cloud.rain.fill",      label: "Rain"),
+        .init(type: .thunderstorm, icon: "cloud.bolt.rain.fill", label: "Storm"),
+        .init(type: .fog,          icon: "cloud.fog.fill",       label: "Fog"),
+        .init(type: .aurora,       icon: "aqi.medium",           label: "Aurora"),
+        .init(type: .aiStorm,      icon: "cpu",                  label: "AI Storm"),
+    ]
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(options, id: \.type) { opt in
+                let selected = settings.weatherType == opt.type
+                Button {
+                    settings.weatherType = opt.type
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: opt.icon)
+                            .font(.system(size: 16, weight: .medium))
+                            .symbolRenderingMode(.multicolor)
+                        Text(opt.label)
+                            .font(.system(size: 9, weight: .medium))
+                    }
+                    .foregroundStyle(selected ? Color.accentColor : .secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(selected
+                                  ? Color.accentColor.opacity(0.14)
+                                  : Color.primary.opacity(0.05))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(selected ? Color.accentColor.opacity(0.4) : Color.clear,
+                                    lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .disabled(settings.liveWeatherEnabled)
+        .opacity(settings.liveWeatherEnabled ? 0.4 : 1.0)
+        .overlay(alignment: .trailing) {
+            if settings.liveWeatherEnabled {
+                Text("Live Weather active")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .padding(.trailing, 2)
+            }
+        }
+    }
+}
+
 // MARK: - Appearance tab
 
 /// Particles (count, speed, opacity) and per-weather-type colour controls.
@@ -199,6 +275,27 @@ private struct AppearanceTab: View {
                             get: { settings.aiStormDensity },
                             set: { settings.aiStormDensity = $0 }
                         ), in: 0.25...3.0, step: 0.05)
+                    }
+                }
+
+                if settings.weatherType == .aurora {
+                    SliderRow(label: "Bird Count", value: auroraBirdCountLabel) {
+                        Slider(value: Binding(
+                            get: { Double(settings.auroraBirdCount) },
+                            set: { settings.auroraBirdCount = Int($0) }
+                        ), in: 0...20, step: 1)
+                    }
+                    SliderRow(label: "Bird Size", value: auroraBirdSizeLabel) {
+                        Slider(value: Binding(
+                            get: { settings.auroraBirdSize },
+                            set: { settings.auroraBirdSize = $0 }
+                        ), in: 0.5...3.0, step: 0.1)
+                    }
+                    SliderRow(label: "Wildness", value: auroraBirdWildnessLabel) {
+                        Slider(value: Binding(
+                            get: { settings.auroraBirdWildness },
+                            set: { settings.auroraBirdWildness = $0 }
+                        ), in: 0.0...1.0, step: 0.05)
                     }
                 }
             }
@@ -290,6 +387,35 @@ private struct AppearanceTab: View {
         case ..<1.0:  return "Normal"
         case ..<2.0:  return "Dense"
         default:      return "Chaotic"
+        }
+    }
+
+    private var auroraBirdCountLabel: String {
+        switch settings.auroraBirdCount {
+        case 0:       return "Off"
+        case 1...3:   return "Few"
+        case 4...8:   return "Flock"
+        case 9...14:  return "Many"
+        default:      return "Murmur"
+        }
+    }
+
+    private var auroraBirdSizeLabel: String {
+        switch settings.auroraBirdSize {
+        case ..<0.8:  return "Tiny"
+        case ..<1.2:  return "Small"
+        case ..<1.7:  return "Medium"
+        case ..<2.3:  return "Large"
+        default:      return "Huge"
+        }
+    }
+
+    private var auroraBirdWildnessLabel: String {
+        switch settings.auroraBirdWildness {
+        case ..<0.2:  return "Uniform"
+        case ..<0.45: return "Calm"
+        case ..<0.7:  return "Varied"
+        default:      return "Wild"
         }
     }
 }

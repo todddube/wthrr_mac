@@ -90,7 +90,10 @@ struct WeatherView: View {
                     AuroraRenderer.draw(
                         context: context, size: size, isDark: isDark,
                         time: model.auroraTime,
-                        particleOpacity: pOpacity
+                        particleOpacity: pOpacity,
+                        birdCount: settings.auroraBirdCount,
+                        birdSize: settings.auroraBirdSize,
+                        birdWildness: settings.auroraBirdWildness
                     )
                 case .snow:
                     SnowRenderer.draw(
