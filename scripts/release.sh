@@ -73,7 +73,12 @@ fi
 echo "Pushing tag $TAG to origin..."
 git push origin "$TAG"
 
-# --- Create GitHub Release and upload DMG ---
+# --- Create (or overwrite) GitHub Release and upload DMG ---
+if gh release view "$TAG" &>/dev/null; then
+  echo "Release $TAG already exists — deleting and recreating..."
+  gh release delete "$TAG" --yes
+fi
+
 echo "Creating GitHub Release $TAG..."
 # shellcheck disable=SC2086
 gh release create "$TAG" \

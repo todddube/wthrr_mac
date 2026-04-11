@@ -1,177 +1,126 @@
 # wthrr
 
-Animated weather effects for your macOS desktop. Snow, rain, thunderstorms, fog, aurora borealis, and digital glitch storms — rendered across all your displays, controlled from the menu bar.
+Animated weather effects for your macOS desktop — rendered across all your displays, controlled from the menu bar.
 
 ![macOS](https://img.shields.io/badge/macOS-26.4+-blue) ![Swift](https://img.shields.io/badge/Swift-6-orange) ![License](https://img.shields.io/badge/license-MIT-green)
 
+---
+
+## Screenshots
+
 <p align="center">
-  <a href="images/Snow.png"><img src="images/Snow.png" alt="Snow mode" width="32%"></a>
-  <a href="images/Rain.png"><img src="images/Rain.png" alt="Rain mode" width="32%"></a>
-  <a href="images/Thunderstorm.png"><img src="images/Thunderstorm.png" alt="Thunderstorm mode" width="32%"></a>
+  <a href="images/Snow.png"><img src="images/Snow.png" alt="Snow" width="32%"></a>
+  <a href="images/Rain.png"><img src="images/Rain.png" alt="Rain" width="32%"></a>
+  <a href="images/Thunderstorm.png"><img src="images/Thunderstorm.png" alt="Thunderstorm" width="32%"></a>
 </p>
 <p align="center">
-  <a href="images/Fog.jpeg"><img src="images/Fog.jpeg" alt="Fog mode" width="32%"></a>
+  <a href="images/Fog.jpeg"><img src="images/Fog.jpeg" alt="Fog" width="32%"></a>
   <a href="images/Aurora.png"><img src="images/Aurora.png" alt="Aurora Borealis" width="32%"></a>
-  <a href="images/AI Storm.png"><img src="images/AI Storm.png" alt="AI Storm mode" width="32%"></a>
+  <a href="images/AI%20Storm.png"><img src="images/AI%20Storm.png" alt="AI Storm" width="32%"></a>
 </p>
+
+<p align="center">
+  <a href="images/Popup%20Menu.jpeg"><img src="images/Popup%20Menu.jpeg" alt="Menu bar popover" width="18%"></a>
+  &nbsp;
+  <a href="images/Settings%20Appearence.png"><img src="images/Settings%20Appearence.png" alt="Appearance settings" width="22%"></a>
+  <a href="images/Settings%20Env.png"><img src="images/Settings%20Env.png" alt="Environment settings" width="22%"></a>
+  <a href="images/Settings%20Presets.png"><img src="images/Settings%20Presets.png" alt="Presets" width="22%"></a>
+  <a href="images/Settings%20Behavior.png"><img src="images/Settings%20Behavior.png" alt="Behavior settings" width="22%"></a>
+</p>
+
+---
+
+## Install
+
+Download the latest `.dmg` from the [Releases](https://github.com/todddube/wthrr_mac/releases) page, open it, and drag **wthrr** into your Applications folder.
+
+> **Gatekeeper notice:** Because wthrr is distributed outside the App Store without notarization, macOS may block it on first launch. Run this once in Terminal after dragging to Applications:
+> ```sh
+> xattr -dr com.apple.quarantine /Applications/wthrr.app
+> ```
+> Then launch normally. You only need to do this once.
 
 ---
 
 ## Weather Modes
 
 ### Snow
-- Three procedural crystal shapes (graupel, star plates, branching dendrites) assigned by size
-- Per-flake rotation, blue tint, and wobble driven by seeded RNG
-- Drift accumulation with adjustable depth (Dusting to Blizzard) and steady-state melt
-- Color theming via hue slider
+Procedural snowfall with three crystal shapes (graupel dots, star plates, branching dendrites) assigned by size. Per-flake rotation, blue tint, and wobble. Drift accumulation with adjustable depth and steady-state melt.
 
 ### Rain
-- Wind-angled streaks that tilt based on current wind velocity
-- Expanding double-ring impact splashes with radiating droplet dots
-- 8-12 persistent puddles with specular shine and ripple rings
-- Color theming via hue slider
+Wind-angled streaks, expanding double-ring impact splashes with radiating droplets, and persistent puddles with specular shine and ripple rings.
 
 ### Thunderstorm
-- Heavy rain with forced lightning strikes and dark storm clouds
-- Combines Rain renderer with always-on lightning and cloud overlay
-- Dramatic composite effect — all the intensity knobs turned up
+Heavy rain combined with dark storm clouds, forced lightning strikes, and all intensity knobs turned up.
 
 ### Fog
-- Slow-drifting translucent gradient bands across the screen
-- Large soft wisp particles rendered with radial gradients
-- Beautiful on dark wallpapers with very low performance cost
-- Color theming via hue slider
+Slow-drifting translucent gradient bands and large soft wisp particles. Beautiful on dark wallpapers with very low performance cost.
 
 ### Aurora Borealis
-- Slow rippling vertical bands of green, purple, and teal
-- Pure gradient animation — no particle physics needed
-- Mesmerizing, slow, and visually unique
+Rippling vertical bands of green, purple, and teal — pure gradient animation, no particle physics needed.
 
 ### AI Storm
-- Neon glitch particles with erratic movement and teleport glitches
-- Scan line distortion, circuit-trace data bolts, corruption patches
-- Alien ships with organic steering and fading trails
-- Screen fracture crack patterns with impact flash effects
-- 4 swappable color palettes: Cyberpunk, Synthwave, Matrix, Inferno
+Neon glitch particles, scan line distortion, circuit-trace data bolts, corruption patches, alien ships with organic steering, and screen fracture crack patterns. 4 swappable color palettes: Cyberpunk, Synthwave, Matrix, Inferno.
 
 ---
 
 ## Features
 
+### Live Weather
+Pulls real conditions from [Open-Meteo](https://open-meteo.com) and auto-applies weather type and intensity. Shows your location name and temperature in the header. Manual controls are disabled while active.
+
 ### Presets
-- **9 built-in presets**: Blizzard, Light Flurry, Spring Rain, Monsoon, Thunderstorm, Foggy Morning, Aurora Borealis, Glitch Overload, Digital Ghost
-- Save and load custom presets with named configurations
-- Import/export presets as JSON for sharing between machines
+9 built-in presets (Blizzard, Light Flurry, Spring Rain, Monsoon, Thunderstorm, Foggy Morning, Aurora Borealis, Glitch Overload, Digital Ghost) plus save/load/delete of custom named presets. Import and export as JSON to share between machines.
 
 ### Intensity Quick-Taps
-Three buttons — **Light**, **Medium**, **Heavy** — that instantly set amount, speed, wind, and opacity to sensible values. Active intensity is highlighted; "Custom" appears when sliders are manually adjusted.
+**Light / Medium / Heavy** buttons instantly set amount, speed, wind, and opacity to sensible values. Active level is highlighted; "Custom" appears when you've manually adjusted sliders.
 
 ### Pause & Global Hotkey
-- Pause/Resume button freezes all effects instantly
-- **Customizable global hotkey** (default: Cmd+Shift+P) — works even when the app isn't focused
-- Menu bar icon reflects paused state
-- Right-click context menu includes Pause/Resume
+Pause/Resume button freezes all effects instantly. Customizable global hotkey (default: **Cmd+Shift+P**) works even when the app isn't focused. Menu bar icon reflects paused state.
 
 ### Color Theming
-- **Snow / Rain / Fog**: Hue slider with live preview swatch and "Reset to Default"
-- **AI Storm**: 4 named neon palettes (Cyberpunk, Synthwave, Matrix, Inferno)
-- Per-weather-type color that updates in real time
+Snow, Rain, and Fog each have a hue slider with live preview. AI Storm has 4 named neon palettes. Colors update in real time.
 
-### Live Weather
-- Pulls real conditions from Open-Meteo and auto-applies weather type + intensity
-- Shows location name and temperature in the header
-- Manual controls disabled while active
-
-### Tuning Knobs
-- **Snow melt rate** — control how fast drift melts (Slow to Rapid)
-- **AI Storm density** — scales spawn rates for bolts, patches, fractures (Sparse to Chaotic)
-- **Cloud opacity** — independent of cloud size (Faint to Dense)
-- **Wind angle** — diagonal fall direction (-45 to +45 degrees)
-
-### Display & Performance
-- Overlays span all connected displays, or choose specific monitors
-- Windows rebuild automatically on display changes
-- **Low Power Mode** — limits animation to ~30 fps
-- Transparent overlay windows pass all mouse events through
-- Clean SIGTERM handling for graceful shutdown
+### Multi-Display Support
+Overlays span all connected displays, or pick specific monitors. Windows rebuild automatically when displays are added or removed.
 
 ### Behavior
 - **Launch at Login** — start wthrr automatically when you log in
-- **Seasonal auto-switch**: Snow in winter, Rain in spring, Thunderstorm in summer, Fog in autumn
-- **Night dimming**: Subtly dims effects between 10pm–5am with dusk/dawn transitions
-
-### Onboarding & Updates
-- **First-launch walkthrough**: 3-step flow — Welcome, Pick Weather, Set Intensity
-- **What's New screen**: Version-gated changelog shown once after each update, also accessible from the splash screen
+- **Seasonal auto-switch** — Snow in winter, Rain in spring, Thunderstorm in summer, Fog in autumn
+- **Night dimming** — subtly dims effects between 10 pm–5 am with dusk/dawn transitions
+- **Low Power Mode** — limits animation to ~30 fps
 
 ### Screenshot Preview
-- Right-click the menu bar icon → **Screenshot Preview…** to open a 1280×800 window
-- Solid black background renders each weather effect cleanly with no desktop clutter
-- Bottom toolbar to switch between all six weather types without leaving the window
-- Use **⌘⇧4** then click the window to capture a clean, frameable screenshot of any effect
-
-### Settings Panel
-Two-panel design: a compact menu bar popover for everyday controls, plus a dedicated Settings window for advanced configuration.
-
-**Menu bar popover** — instant access controls:
-- Live 64px weather preview strip
-- Weather type picker (icon-only segmented control)
-- Intensity quick-taps (Light / Medium / Heavy)
-- Live Weather toggle + location status
-- Display selection (All or Choose specific monitors)
-- Shuffle/reroll button and Pause control in the header
-
-<p align="center">
-  <a href="images/Popup Menu.jpeg"><img src="images/Popup Menu.jpeg" alt="Menu bar popover" width="22%"></a>
-</p>
-
-**Settings window** (System Preferences-style icon toolbar, 4 tabs):
-- **Appearance** — particle amount, speed, opacity; per-weather-type colour controls (hue sliders or AI Storm neon palettes); snow melt rate; AI Storm effect density
-- **Environment** — wind strength, direction, fall angle; clouds (size, speed, opacity); snow drift accumulation depth; lightning frequency
-- **Presets** — built-in + user presets as pill buttons; save, delete, import/export JSON
-- **Behavior** — Launch at Login, Seasonal auto-switch, Night Dimming, Low Power Mode; links to About, Onboarding, What's New
-- macOS vibrancy material background throughout
-
-<p align="center">
-  <a href="images/Settings Appearence.png"><img src="images/Settings Appearence.png" alt="Appearance tab" width="24%"></a>
-  <a href="images/Settings Env.png"><img src="images/Settings Env.png" alt="Environment tab" width="24%"></a>
-  <a href="images/Settings Presets.png"><img src="images/Settings Presets.png" alt="Presets tab" width="24%"></a>
-  <a href="images/Settings Behavior.png"><img src="images/Settings Behavior.png" alt="Behavior tab" width="24%"></a>
-</p>
+Right-click the menu bar icon → **Screenshot Preview…** to open a clean 1280×800 window with a solid black background. Switch between all six effects without leaving the window. Use **⌘⇧4** then click to capture frameable screenshots of any effect.
 
 ---
 
-## Requirements
+## Settings
 
-- macOS 26.4 or later
-- Xcode 26+ (to build from source)
+A compact **menu bar popover** gives you everyday controls — weather type picker, intensity quick-taps, live weather toggle, display selection, and pause. The full **Settings window** (System Preferences-style icon toolbar) has four tabs:
 
-## Install
+| Tab | Controls |
+|-----|----------|
+| **Appearance** | Particle amount, speed, opacity; per-weather colour controls; snow melt rate; AI Storm density |
+| **Environment** | Wind strength/direction/angle; cloud size, speed, opacity; drift accumulation depth; lightning frequency |
+| **Presets** | Built-in + user presets; save, delete, import/export JSON |
+| **Behavior** | Launch at Login, Seasonal auto-switch, Night Dimming, Low Power Mode; Onboarding and What's New |
 
-Download the latest `.dmg` from the [Releases](https://github.com/todddube/wthrr_mac/releases) page, open it, and drag **wthrr** into your Applications folder.
-
-> **Gatekeeper notice:** Because wthrr is distributed outside the App Store without notarization, macOS may block it with a crossed-out icon or "unidentified developer" warning. Run this once in Terminal after dragging the app to Applications:
-> ```sh
-> xattr -dr com.apple.quarantine /Applications/wthrr.app
-> ```
-> Then launch normally. You only need to do this once.
+---
 
 ## Building from Source
 
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/todddube/wthrr_mac.git
-   cd wthrr_mac
-   ```
+**Requirements:** macOS 26.4+, Xcode 26+
 
-2. Open in Xcode:
-   ```bash
-   open wthrr.xcodeproj
-   ```
+```bash
+git clone https://github.com/todddube/wthrr_mac.git
+cd wthrr_mac
+open wthrr.xcodeproj
+```
 
-3. Select the **wthrr** scheme, choose **My Mac**, and hit **Cmd+R**.
+Select the **wthrr** scheme, choose **My Mac**, and hit **Cmd+R**. The app appears as a weather icon in your menu bar.
 
-The app appears as a weather icon in your menu bar. Click it to open the settings popover. Right-click for a quick context menu.
+---
 
 ## Architecture
 
@@ -186,35 +135,16 @@ wthrr/
 ├── Fog/            FogParticle (bands + factory), FogRenderer
 ├── Aurora/         AuroraParticle (factory), AuroraRenderer
 ├── Clouds/         Cloud (factory), CloudRenderer
-├── Animation/      WeatherAnimationModel (display-synced physics engine)
+├── Animation/      WeatherAnimationModel — display-synced physics engine
 ├── Views/          WeatherView, ContentView, SettingsWindowView, SplashView,
 │                   OnboardingView, WhatsNewView, WeatherPreviewView
-├── Windows/        OverlayWindowController (per-display overlay windows)
+├── Windows/        OverlayWindowController — per-display overlay windows
 └── Assets.xcassets
 ```
 
-### Data flow
+`WeatherSettings.shared` is the `@Observable` singleton that drives everything. All settings persist to `UserDefaults` via `didSet`. Each display gets its own borderless, transparent, click-through `NSWindow` managed by `OverlayWindowController`. Particle physics run in `WeatherAnimationModel`, driven by `TimelineView(.animation)` synced to the display refresh rate.
 
-```
-WeatherSettings.shared          (@Observable @MainActor singleton)
-    |
-    +-- ContentView              (menu bar popover — core controls: type, intensity, displays)
-    |
-    +-- SettingsWindowView       (tabbed settings window — appearance, env, presets, behavior)
-    |
-    +-- OverlayWindowController
-            |
-            +-- per-display NSWindow (borderless, transparent, click-through)
-                    |
-                    +-- WeatherView (TimelineView + Canvas) + WeatherAnimationModel
-                            |
-                            +-- SnowRenderer      (snow)
-                            +-- RainRenderer       (rain, thunderstorm)
-                            +-- FogRenderer        (fog)
-                            +-- AuroraRenderer     (aurora borealis)
-                            +-- AIStormRenderer    (AI storm)
-                            +-- CloudRenderer      (clouds, shared)
-```
+---
 
 ## Releasing
 
@@ -222,12 +152,14 @@ See [RELEASE.md](RELEASE.md) for the full release process — version bumping, D
 
 ## Roadmap
 
-See [FUTURE.md](FUTURE.md) for the full roadmap, remaining feature ideas, and monetization plan.
+See [FUTURE.md](FUTURE.md) for planned features and ideas.
+
+---
 
 ## Author
 
-**Todd Dube** — [GitHub](https://github.com/todddube)
+**Todd Dube** — [github.com/todddube](https://github.com/todddube)
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE) for details.

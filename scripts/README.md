@@ -67,8 +67,8 @@ gh auth login
 1. Validates that `build/wthrr-<version>.dmg` exists
 2. Validates that `release-notes/<version>.md` exists
 3. Warns if you have uncommitted changes and prompts to continue
-4. Creates and pushes an annotated git tag `v<version>`
-5. Calls `gh release create` with the release notes and DMG attached
+4. Creates and pushes an annotated git tag `v<version>` (reuses existing tag if present)
+5. If a GitHub Release for that tag already exists, deletes it first, then recreates it with the updated notes and DMG
 
 **Typical full release workflow:**
 ```bash
