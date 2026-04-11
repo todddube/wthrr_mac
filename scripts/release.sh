@@ -62,6 +62,11 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   [[ "$confirm" =~ ^[Yy]$ ]] || exit 1
 fi
 
+# --- Push commits on current branch first ---
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+echo "Pushing branch '$CURRENT_BRANCH' to origin..."
+git push origin "$CURRENT_BRANCH"
+
 # --- Create and push tag ---
 if git rev-parse "$TAG" &>/dev/null; then
   echo "Tag $TAG already exists locally — reusing."

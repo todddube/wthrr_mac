@@ -28,9 +28,13 @@ struct WhatsNewView: View {
     /// Update this array each release.
     private var entries: [(icon: String, text: String)] {
         [
+            // New in this build
+            ("bird",                  "Aurora birds — animated silhouette birds drift across the aurora sky, flapping in sync with the light"),
+            ("slider.horizontal.3",   "Bird controls — tune Bird Count, Bird Size, and Wildness per-bird variation right from Appearance settings"),
+            ("cloud.bolt.rain.fill",  "Settings weather picker — switch weather type directly from the settings window; controls update instantly"),
+
             // Weather modes
             ("aqi.medium",            "Aurora Borealis — rippling color bands across all your displays"),
-            ("cloud.bolt.rain.fill",  "Thunderstorm — dark clouds, heavy rain, and forced lightning"),
             ("cloud.fog.fill",        "Fog — slow drifting translucent bands and soft wisp particles"),
             ("cpu",                   "AI Storm — alien ships, screen fractures, data bolts, and 4 neon palettes"),
 

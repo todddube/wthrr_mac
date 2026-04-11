@@ -57,7 +57,7 @@ Heavy rain combined with dark storm clouds, forced lightning strikes, and all in
 Slow-drifting translucent gradient bands and large soft wisp particles. Beautiful on dark wallpapers with very low performance cost.
 
 ### Aurora Borealis
-Rippling vertical bands of green, purple, and teal — pure gradient animation, no particle physics needed.
+Rippling vertical bands of green, purple, and teal — pure gradient animation, no particle physics needed. Animated silhouette birds drift across the sky, flapping organically. Bird count, size, and wildness (per-bird variation) are all configurable in Appearance settings.
 
 ### AI Storm
 Neon glitch particles, scan line distortion, circuit-trace data bolts, corruption patches, alien ships with organic steering, and screen fracture crack patterns. 4 swappable color palettes: Cyberpunk, Synthwave, Matrix, Inferno.
@@ -97,11 +97,11 @@ Right-click the menu bar icon → **Screenshot Preview…** to open a clean 1280
 
 ## Settings
 
-A compact **menu bar popover** gives you everyday controls — weather type picker, intensity quick-taps, live weather toggle, display selection, and pause. The full **Settings window** (System Preferences-style icon toolbar) has four tabs:
+A compact **menu bar popover** gives you everyday controls — weather type picker, intensity quick-taps, live weather toggle, display selection, and pause. The full **Settings window** (System Preferences-style icon toolbar) has a persistent **weather type picker** at the top so you can switch modes without leaving the window — controls update instantly to show options relevant to that type. Four tabs:
 
 | Tab | Controls |
 |-----|----------|
-| **Appearance** | Particle amount, speed, opacity; per-weather colour controls; snow melt rate; AI Storm density |
+| **Appearance** | Particle amount, speed, opacity; per-weather colour controls; snow melt rate; AI Storm density; aurora bird count, size, and wildness |
 | **Environment** | Wind strength/direction/angle; cloud size, speed, opacity; drift accumulation depth; lightning frequency |
 | **Presets** | Built-in + user presets; save, delete, import/export JSON |
 | **Behavior** | Launch at Login, Seasonal auto-switch, Night Dimming, Low Power Mode; Onboarding and What's New |
