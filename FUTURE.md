@@ -6,10 +6,9 @@ See [README.md](README.md) for the full list of currently implemented features.
 
 ## Remaining Ideas
 
-### Screen Frost (Snow Mode)
-Ice crystal formations that slowly creep inward from screen edges at high accumulation levels.
-Pure canvas path drawing, no physics required. Pairs naturally with the existing accumulation system.
-**Effort: Medium** — most visually stunning remaining idea, strong Snow mode differentiator.
+### ~~Screen Frost (Snow Mode)~~ ✓ Done
+~~Ice crystal formations that slowly creep inward from screen edges at high accumulation levels.
+Pure canvas path drawing, no physics required. Pairs naturally with the existing accumulation system.~~
 
 ### Per-Display Settings
 Different weather type on different monitors simultaneously.

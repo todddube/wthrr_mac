@@ -96,6 +96,20 @@ struct WeatherView: View {
                         birdWildness: settings.auroraBirdWildness
                     )
                 case .snow:
+                    // Frost level: starts at 20% average accumulation, full at 100%.
+                    // Uses the same effective height cap the physics engine uses so
+                    // the fraction stays in [0, 1] even when maxAccumulationHeight
+                    // exceeds 20% of the screen (the model's hard ceiling).
+                    let frostLevel: CGFloat = {
+                        guard settings.accumulationEnabled,
+                              !model.accumulationMap.isEmpty else { return 0 }
+                        let avg = model.accumulationMap.reduce(0, +)
+                                  / CGFloat(model.accumulationMap.count)
+                        let effectiveMax = min(CGFloat(settings.maxAccumulationHeight),
+                                               size.height * 0.20)
+                        guard effectiveMax > 0 else { return 0 }
+                        return max(0, min(1, (avg / effectiveMax - 0.20) / 0.80))
+                    }()
                     SnowRenderer.draw(
                         context: context, size: size, isDark: isDark,
                         particles: model.particles,
@@ -104,7 +118,9 @@ struct WeatherView: View {
                         accumulationEnabled: settings.accumulationEnabled,
                         columnWidth: model.columnWidth,
                         particleOpacity: pOpacity,
-                        tintHue: settings.snowTintHue
+                        tintHue: settings.snowTintHue,
+                        time: model.snowTime,
+                        frostLevel: frostLevel
                     )
                 }
             }

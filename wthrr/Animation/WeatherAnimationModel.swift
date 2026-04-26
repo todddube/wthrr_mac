@@ -90,6 +90,9 @@ final class WeatherAnimationModel {
     /// Elapsed time for aurora animation, advanced each frame.
     private(set) var auroraTime: CGFloat = 0
 
+    /// Elapsed time for snow-mode animation (frost shimmer), advanced each frame.
+    private(set) var snowTime: CGFloat = 0
+
     // MARK: Clouds
 
     /// Active clouds drifting across the top of the screen.
@@ -352,9 +355,12 @@ final class WeatherAnimationModel {
 
         advanceClouds(dt: dt)
 
-        // Advance aurora time
+        // Advance aurora/snow timers
         if settings.weatherType == .aurora {
             auroraTime += dt
+        }
+        if settings.weatherType == .snow {
+            snowTime += dt
         }
 
         frameCount &+= 1

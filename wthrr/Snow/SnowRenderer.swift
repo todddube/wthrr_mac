@@ -32,7 +32,9 @@ enum SnowRenderer {
         accumulationEnabled: Bool,
         columnWidth: CGFloat,
         particleOpacity: Double = 1.0,
-        tintHue: Double = -1
+        tintHue: Double = -1,
+        time: CGFloat = 0,
+        frostLevel: CGFloat = 0
     ) {
         drawFlakes(context: context, isDark: isDark, particles: particles, particleOpacity: particleOpacity, tintHue: tintHue)
         drawDrift(
@@ -41,6 +43,13 @@ enum SnowRenderer {
             accumulationEnabled: accumulationEnabled, columnWidth: columnWidth,
             tintHue: tintHue
         )
+        if frostLevel > 0.01 {
+            FrostRenderer.draw(
+                context: context, size: size, isDark: isDark,
+                time: time, frostLevel: frostLevel,
+                particleOpacity: particleOpacity, tintHue: tintHue
+            )
+        }
     }
 
     // MARK: Snowflake rendering
