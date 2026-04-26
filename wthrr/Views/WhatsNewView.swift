@@ -31,7 +31,7 @@ struct WhatsNewView: View {
             // New in this build
             ("bird",                  "Aurora birds — animated silhouette birds drift across the aurora sky, flapping in sync with the light"),
             ("slider.horizontal.3",   "Bird controls — tune Bird Count, Bird Size, and Wildness per-bird variation right from Appearance settings"),
-            ("cloud.bolt.rain.fill",  "Settings weather picker — switch weather type directly from the settings window; controls update instantly"),
+            ("switch.2",              "Settings weather picker — switch weather type directly from the settings window; controls update instantly"),
 
             // Weather modes
             ("aqi.medium",            "Aurora Borealis — rippling color bands across all your displays"),
