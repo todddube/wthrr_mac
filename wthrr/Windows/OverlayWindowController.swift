@@ -3,6 +3,7 @@
 //
 // Author: Todd Dube
 // GitHub: https://github.com/todddube/wthrr_mac
+// License: MIT — see LICENSE for details
 
 import AppKit
 import SwiftUI

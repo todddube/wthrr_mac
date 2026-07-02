@@ -1,5 +1,9 @@
 // LiveWeatherService.swift
 // wthrr — macOS decorative weather overlay
+//
+// Author: Todd Dube
+// GitHub: https://github.com/todddube/wthrr_mac
+// License: MIT — see LICENSE for details
 
 import Foundation
 import CoreLocation

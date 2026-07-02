@@ -2,7 +2,7 @@
 
 Animated weather effects for your macOS desktop — rendered across all your displays, controlled from the menu bar.
 
-![macOS](https://img.shields.io/badge/macOS-26.4+-blue) ![Swift](https://img.shields.io/badge/Swift-6-orange) ![License](https://img.shields.io/badge/license-MIT-green)
+![macOS](https://img.shields.io/badge/macOS-26.4+-blue) ![Swift](https://img.shields.io/badge/Swift-6-orange) ![License](https://img.shields.io/badge/license-MIT-green) ![Free](https://img.shields.io/badge/free-open--source-brightgreen)
 
 ---
 
@@ -34,11 +34,24 @@ Animated weather effects for your macOS desktop — rendered across all your dis
 
 Download the latest `.dmg` from the [Releases](https://github.com/todddube/wthrr_mac/releases) page, open it, and drag **wthrr** into your Applications folder.
 
-> **Gatekeeper notice:** Because wthrr is distributed outside the App Store without notarization, macOS may block it on first launch. Run this once in Terminal after dragging to Applications:
+> **First launch — Gatekeeper bypass**
+>
+> wthrr is distributed outside the App Store, so macOS will ask you to confirm it's safe the first time. Two easy ways — you only need to do this once:
+>
+> **Option 1 — Secondary-click (quickest)**
+> Right-click (or Control-click) **wthrr** in Applications → choose **Open** → click **Open** in the dialog.
+>
+> **Option 2 — System Settings**
+> Try to open wthrr normally. macOS will block it and show a notification. Open **System Settings → Privacy & Security**, scroll to the Security section, and click **"Open Anyway"** next to wthrr.
+>
+> <details>
+> <summary>Terminal fallback (if neither option appears)</summary>
+>
 > ```sh
 > xattr -dr com.apple.quarantine /Applications/wthrr.app
 > ```
-> Then launch normally. You only need to do this once.
+>
+> </details>
 
 ---
 
@@ -146,6 +159,16 @@ wthrr/
 
 ---
 
+## Contributing
+
+wthrr is free, open-source software and contributions are welcome — bug reports, feature ideas, new weather effects, or documentation improvements.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get started, code style guidelines, and how to submit a pull request.
+
+[Open an issue](https://github.com/todddube/wthrr_mac/issues) to report a bug or suggest a feature.
+
+---
+
 ## Releasing
 
 See [RELEASE.md](RELEASE.md) for the full release process — version bumping, DMG build, tagging, and publishing to GitHub Releases.
@@ -162,4 +185,4 @@ See [FUTURE.md](FUTURE.md) for planned features and ideas.
 
 ## License
 
-MIT — see [LICENSE](LICENSE) for details.
+MIT — free to use, modify, and distribute. See [LICENSE](LICENSE) for details.
