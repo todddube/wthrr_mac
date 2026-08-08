@@ -41,6 +41,14 @@ struct SplashView: View {
     /// key capabilities so returning users see relevant information on every launch.
     private var features: [(icon: String, text: String)] {
         switch settings.weatherType {
+        case .clear:
+            return [
+                ("sun.max.fill", "Sun tracks the time of day"),
+                ("cloud.fill", "Big sunlit cumulus clouds"),
+                ("sparkles", "Light shafts & drifting motes"),
+                ("bird.fill", "Birds crossing the sky"),
+                ("slider.horizontal.3", "Fully configurable"),
+            ]
         case .rain:
             return [
                 ("cloud.rain.fill", "Wind-angled rain streaks"),

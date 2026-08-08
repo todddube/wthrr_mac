@@ -216,32 +216,36 @@ private extension LiveWeatherCondition {
         let precip = w.precipitation
         let wind   = w.windspeed10m
 
-        // WMO weather code → weather type + lightning
+        // WMO weather code → weather type + lightning.
+        //
+        // Every branch here now maps to the effect that actually matches the code.
+        // Previously clear skies (0–3) were shown as rain or snow because there was no
+        // clear-sky scene, and fog (45/48) was shown as rain despite `.fog` existing.
         let type: WeatherType
         let lightning: Bool
         switch code {
         case 0...3:
-            // Clear / partly cloudy / overcast — decorative pick by temperature
-            type = temp <= 35 ? .snow : .rain
-            lightning = false
+            // 0 clear, 1 mainly clear, 2 partly cloudy, 3 overcast.
+            type = .clear; lightning = false
         case 45, 48:
-            type = .rain; lightning = false          // Fog
+            type = .fog; lightning = false           // Fog / depositing rime fog
         case 51...57:
-            type = .rain; lightning = false          // Drizzle
+            type = .rain; lightning = false          // Drizzle (incl. freezing drizzle)
         case 61...67:
-            type = .rain; lightning = false          // Rain
+            type = .rain; lightning = false          // Rain (incl. freezing rain)
         case 71...77:
-            type = .snow; lightning = false          // Snow
+            type = .snow; lightning = false          // Snow fall / snow grains
         case 80...82:
             type = .rain; lightning = false          // Rain showers
         case 85, 86:
             type = .snow; lightning = false          // Snow showers
         case 95:
-            type = .rain; lightning = true           // Thunderstorm
+            type = .thunderstorm; lightning = true   // Thunderstorm
         case 96, 99:
-            type = .rain; lightning = true           // Thunderstorm + hail
+            type = .thunderstorm; lightning = true   // Thunderstorm + hail
         default:
-            type = .snow; lightning = false
+            // Unknown code: fair weather is the safe, least-wrong default.
+            type = .clear; lightning = false
         }
 
         // Precipitation intensity → particle count + speed

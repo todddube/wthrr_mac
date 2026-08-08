@@ -23,21 +23,94 @@ enum CloudRenderer {
     ///   - clouds: The current cloud population to render.
     ///   - weatherType: Determines which cloud style (natural vs. AI glitch) to use.
     ///   - cloudOpacity: Global cloud opacity multiplier from `WeatherSettings`.
+    ///   - sunDirection: Unit vector pointing from the clouds toward the light source,
+    ///     used only by the fair-weather cloud style to decide which side is lit.
     static func draw(
         context: GraphicsContext,
         size: CGSize,
         isDark: Bool,
         clouds: [Cloud],
         weatherType: WeatherType,
-        cloudOpacity: Double = 1.0
+        cloudOpacity: Double = 1.0,
+        sunDirection: CGPoint = CGPoint(x: 0, y: -1)
     ) {
         for cloud in clouds {
             switch weatherType {
             case .snow, .rain, .thunderstorm, .fog, .aurora:
                 drawNaturalCloud(context: context, cloud: cloud, isDark: isDark, cloudOpacity: cloudOpacity)
+            case .clear:
+                drawFluffyCloud(context: context, cloud: cloud, isDark: isDark,
+                                cloudOpacity: cloudOpacity, sunDirection: sunDirection)
             case .aiStorm:
                 drawAICloud(context: context, cloud: cloud, isDark: isDark, cloudOpacity: cloudOpacity)
             }
+        }
+    }
+
+    // MARK: Fair-weather cumulus
+
+    /// Draws a big, bright cumulus cloud with directional shading.
+    ///
+    /// Each blob is drawn three times: a shadowed base offset away from the sun, the
+    /// body itself, and a bright highlight offset toward the sun. That three-pass
+    /// stack is what turns flat ellipses into something that reads as volume, and it
+    /// keeps the whole flock visually consistent because every cloud is lit from the
+    /// same direction as the sun that `ClearSkyRenderer` just drew.
+    private static func drawFluffyCloud(
+        context: GraphicsContext,
+        cloud: Cloud,
+        isDark: Bool,
+        cloudOpacity: Double,
+        sunDirection: CGPoint
+    ) {
+        // Re-create the same RNG used at cloud creation so blob placement is stable
+        var rng = SeededRNG(seed: cloud.blobSeed)
+
+        let bodyWhite: Double  = isDark ? 0.86 : 0.99
+        let shadowTint = Color(red: 0.62, green: 0.68, blue: 0.80)
+        let alpha = cloud.opacity * cloudOpacity
+
+        for _ in 0..<cloud.blobCount {
+            let blobW = cloud.width * CGFloat(rng.next(in: 0.30...0.62))
+            let blobH = cloud.height * CGFloat(rng.next(in: 0.55...1.05))
+            let offsetX = CGFloat(rng.next(in: -0.42...0.42)) * cloud.width
+            // Bias blobs downward slightly so the cloud has a flat-ish base like real cumulus.
+            let offsetY = CGFloat(rng.next(in: -0.18...0.34)) * cloud.height
+
+            let cx = cloud.x + offsetX
+            let cy = cloud.y + offsetY
+            let shift = min(blobW, blobH) * 0.20
+
+            func rect(dx: CGFloat, dy: CGFloat, scale: CGFloat) -> CGRect {
+                CGRect(x: cx + dx - blobW * scale / 2,
+                       y: cy + dy - blobH * scale / 2,
+                       width: blobW * scale,
+                       height: blobH * scale)
+            }
+
+            // 1. Shadowed underside, pushed away from the sun.
+            context.fill(
+                Ellipse().path(in: rect(dx: -sunDirection.x * shift,
+                                        dy: -sunDirection.y * shift,
+                                        scale: 1.0)),
+                with: .color(shadowTint.opacity(alpha * 0.55))
+            )
+
+            // 2. Cloud body.
+            let bodyVar = rng.next(in: -0.04...0.02)
+            context.fill(
+                Ellipse().path(in: rect(dx: 0, dy: 0, scale: 0.97)),
+                with: .color(Color(white: bodyWhite + bodyVar).opacity(alpha))
+            )
+
+            // 3. Sunlit crown, pulled toward the sun and tucked in a little.
+            context.fill(
+                Ellipse().path(in: rect(dx: sunDirection.x * shift * 0.85,
+                                        dy: sunDirection.y * shift * 0.85,
+                                        scale: 0.72)),
+                with: .color(Color(red: 1.0, green: 0.99, blue: 0.94)
+                    .opacity(alpha * (isDark ? 0.5 : 0.85)))
+            )
         }
     }
 

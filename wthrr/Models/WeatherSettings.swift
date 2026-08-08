@@ -11,6 +11,7 @@ import SwiftUI
 
 /// Selects the active weather effect shown on overlay windows.
 enum WeatherType: String, CaseIterable {
+    case clear        = "clear"         // Fair weather: sun/moon, fluffy cumulus, birds, drifting pollen
     case snow         = "snow"          // Snowflakes with optional drift accumulation
     case rain         = "rain"          // Raindrops with splashes and optional puddles
     case aiStorm      = "aiStorm"       // Digital glitch storm with neon particles and data bolts
@@ -530,6 +531,7 @@ class WeatherSettings {
     /// SF Symbol name for the current weather type, used in the header and menu bar.
     var weatherIcon: String {
         switch weatherType {
+        case .clear:        return "sun.max.fill"
         case .rain:         return "cloud.rain.fill"
         case .aiStorm:      return "bolt.trianglebadge.exclamationmark.fill"
         case .snow:         return "cloud.snow.fill"
@@ -544,6 +546,7 @@ class WeatherSettings {
     var temperatureText: String {
         if liveWeatherEnabled, let live = liveTemperatureText { return live }
         switch weatherType {
+        case .clear:        return "72\u{00B0}F"
         case .rain:         return "52\u{00B0}F"
         case .aiStorm:      return "??\u{00B0}?"
         case .snow:         return "28\u{00B0}F"
@@ -556,6 +559,7 @@ class WeatherSettings {
     /// Human-readable name of the current weather type.
     var weatherLabel: String {
         switch weatherType {
+        case .clear:        return "Clear Skies"
         case .rain:         return "Rain"
         case .aiStorm:      return "AI Storm"
         case .snow:         return "Snow"
@@ -568,6 +572,7 @@ class WeatherSettings {
     /// Unit name for a single particle ("flakes" for snow, "drops" for rain).
     var particleUnit: String {
         switch weatherType {
+        case .clear:        return "motes"
         case .rain:         return "drops"
         case .aiStorm:      return "glitches"
         case .snow:         return "flakes"
@@ -580,6 +585,7 @@ class WeatherSettings {
     /// Label for the accumulation toggle (context-aware per weather type).
     var accumulationLabel: String {
         switch weatherType {
+        case .clear:        return "Sun Rays"
         case .rain:         return "Puddles"
         case .aiStorm:      return "Corruption"
         case .snow:         return "Accumulation"
@@ -592,6 +598,7 @@ class WeatherSettings {
     /// Description shown below the accumulation toggle when it is enabled.
     var accumulationDescription: String {
         switch weatherType {
+        case .clear:        return "Volumetric shafts of light fan out from the sun"
         case .rain:         return "Puddles form and grow at the bottom of the screen"
         case .aiStorm:      return "Static patches corrupt regions of the screen"
         case .snow:         return "Flakes pile up and go around the Dock"
@@ -615,6 +622,7 @@ class WeatherSettings {
     /// Label for the re-randomise button (context-aware per weather type).
     var rerollLabel: String {
         switch weatherType {
+        case .clear:        return "Re-randomise Sky"
         case .rain:         return "Re-randomise Drops"
         case .aiStorm:      return "Re-randomise Glitches"
         case .snow:         return "Re-randomise Flakes"

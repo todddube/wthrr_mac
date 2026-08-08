@@ -170,6 +170,7 @@ private struct WeatherTypePicker: View {
     }
 
     private let options: [WeatherOption] = [
+        .init(type: .clear,        icon: "sun.max.fill",         label: "Clear"),
         .init(type: .snow,         icon: "snowflake",            label: "Snow"),
         .init(type: .rain,         icon: "cloud.rain.fill",      label: "Rain"),
         .init(type: .thunderstorm, icon: "cloud.bolt.rain.fill", label: "Storm"),
@@ -279,7 +280,8 @@ private struct AppearanceTab: View {
                     }
                 }
 
-                if settings.weatherType == .aurora {
+                // Birds are shared by Aurora and Clear Skies.
+                if settings.weatherType == .aurora || settings.weatherType == .clear {
                     SliderRow(label: "Bird Count", value: auroraBirdCountLabel) {
                         Slider(value: Binding(
                             get: { Double(settings.auroraBirdCount) },
@@ -326,6 +328,13 @@ private struct AppearanceTab: View {
                 ColorSliderRow(label: "Fog Tint", hue: $settings.fogTintHue)
             case .aurora:
                 ColorSliderRow(label: "Aurora Tint", hue: $settings.fogTintHue)
+            case .clear:
+                // Clear Skies takes its palette from the time of day rather than a
+                // tint slider, so there is nothing to pick here.
+                Text("Sky colour follows the time of day — warm at sunrise and sunset, blue at midday, moonlit after dark. Use Cloud Opacity in Environment to adjust the cumulus.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer()
@@ -765,6 +774,7 @@ private struct PresetCard: View {
         case .rain:         return "cloud.rain.fill"
         case .thunderstorm: return "cloud.bolt.rain.fill"
         case .fog:          return "cloud.fog.fill"
+        case .clear:        return "sun.max.fill"
         case .aiStorm:      return "bolt.fill"
         case .aurora:       return "aqi.medium"
         }
@@ -776,6 +786,7 @@ private struct PresetCard: View {
         case .rain:         return .blue
         case .thunderstorm: return .purple
         case .fog:          return .gray
+        case .clear:        return .orange
         case .aiStorm:      return .green
         case .aurora:       return .teal
         }

@@ -105,6 +105,27 @@ final class WeatherAnimationModel {
     /// Elapsed time for snow-mode animation (frost shimmer), advanced each frame.
     private(set) var snowTime: CGFloat = 0
 
+    /// Elapsed time for clear-sky animation (ray drift, bird flight), advanced each frame.
+    private(set) var clearTime: CGFloat = 0
+
+    /// Sun/moon position for the current local time. Recomputed periodically rather
+    /// than every frame — the sun moves 0.25° per minute, so reading the calendar
+    /// 60 times a second would be pure waste.
+    private(set) var sky: SkyState = .current
+
+    /// Frames remaining until `sky` is refreshed.
+    private var skyRefreshCountdown: Int = 0
+
+    /// Unit vector pointing from the middle of the screen toward the light source.
+    /// `CloudRenderer` uses it to light every cumulus from the same direction as the
+    /// sun, which is what keeps the flock looking like one coherent scene.
+    var sunDirection: CGPoint {
+        let dx = sky.x - 0.5
+        let dy = sky.y - 0.5
+        let len = max(0.0001, (dx * dx + dy * dy).squareRoot())
+        return CGPoint(x: dx / len, y: dy / len)
+    }
+
     // MARK: Clouds
 
     /// Active clouds drifting across the top of the screen.
@@ -115,6 +136,11 @@ final class WeatherAnimationModel {
 
     /// Cloud size multiplier last used to build the cloud population.
     private var builtCloudSize: Double = 0
+
+    /// Whether the current cloud population is the large fair-weather kind. Switching
+    /// into or out of Clear Skies has to rebuild, since the two styles differ in size,
+    /// vertical spread, and opacity.
+    private var builtCloudsFairWeather: Bool = false
 
     // MARK: Accumulation
 
@@ -287,7 +313,13 @@ final class WeatherAnimationModel {
         let dt: CGFloat = lastTime == 0 ? 1.0 / 60.0 : CGFloat(min(now - lastTime, 1.0 / 20.0))
         lastTime = now
 
-        guard !particles.isEmpty else { return }
+        // Refresh the solar arc roughly every 20 seconds at 60 fps. Clear Skies needs
+        // it; the other scenes never read it, so it costs nothing to keep current.
+        skyRefreshCountdown -= 1
+        if skyRefreshCountdown <= 0 {
+            sky = .current
+            skyRefreshCountdown = 1200
+        }
 
         let speedScale = CGFloat(settings.speedMultiplier)
         let windScale  = CGFloat(settings.windStrength)
@@ -320,6 +352,9 @@ final class WeatherAnimationModel {
 
         // Direct buffer access avoids a class-property lookup and a copy-on-write
         // uniqueness check on every one of the ~10 subscript operations below.
+        // Guarded rather than early-returning from `advance` so that clouds, lightning,
+        // and the sky clock keep running even when the particle array is empty.
+        if !particles.isEmpty {
         particles.withUnsafeMutableBufferPointer { buf in
             for i in buf.indices {
                 let step = buf[i].fallSpeed * speedScale * dt
@@ -343,6 +378,15 @@ final class WeatherAnimationModel {
                         buf[i].y = -40
                         buf[i].x = CGFloat.random(in: 0...screenW)
                     }
+                case .clear:
+                    // Motes wrap in both directions — a third of them rise on thermals.
+                    if buf[i].y > screenH + 20 {
+                        buf[i].y = -20
+                        buf[i].x = CGFloat.random(in: 0...screenW)
+                    } else if buf[i].y < -20 {
+                        buf[i].y = screenH + 20
+                        buf[i].x = CGFloat.random(in: 0...screenW)
+                    }
                 case .snow:
                     advanceSnowParticle(&buf[i], accumulating: accumulating, maxAccumH: maxAccumH)
                 }
@@ -354,6 +398,7 @@ final class WeatherAnimationModel {
                     buf[i].x = wrapLeft
                 }
             }
+        }
         }
 
         ageSplashes(dt: dt)
@@ -388,6 +433,9 @@ final class WeatherAnimationModel {
         }
         if settings.weatherType == .snow {
             snowTime += dt
+        }
+        if settings.weatherType == .clear {
+            clearTime += dt
         }
 
         frameCount &+= 1
@@ -921,7 +969,9 @@ final class WeatherAnimationModel {
     private func configureClouds(settings: WeatherSettings) {
         guard screenSize != .zero else { return }
 
-        let cloudsNeeded = settings.cloudsEnabled || settings.weatherType == .thunderstorm
+        let isClear = settings.weatherType == .clear
+        // Clear Skies always has clouds — they are the scene, not an optional garnish.
+        let cloudsNeeded = settings.cloudsEnabled || settings.weatherType == .thunderstorm || isClear
         if !cloudsNeeded {
             if !clouds.isEmpty { clouds.removeAll() }
             builtCloudsEnabled = false
@@ -931,20 +981,35 @@ final class WeatherAnimationModel {
         let needsRebuild = !builtCloudsEnabled
             || clouds.isEmpty
             || settings.cloudSize != builtCloudSize
+            || isClear != builtCloudsFairWeather
 
         guard needsRebuild else { return }
         builtCloudsEnabled = true
         builtCloudSize = settings.cloudSize
+        builtCloudsFairWeather = isClear
 
         var rng = SeededRNG(seed: UInt64(bitPattern: Int64(settings.randomSeed &+ 7777)))
-        let count = Int.random(in: 3...CloudFactory.maxClouds)
-        clouds = (0..<count).map { _ in
-            CloudFactory.makeCloud(
-                screenWidth: screenSize.width,
-                sizeMultiplier: settings.cloudSize,
-                startOffScreen: false,
-                rng: &rng
-            )
+        if isClear {
+            let count = Int(rng.next(in: 4...Double(CloudFactory.maxFairWeatherClouds)))
+            clouds = (0..<count).map { _ in
+                CloudFactory.makeFairWeatherCloud(
+                    screenWidth: screenSize.width,
+                    screenHeight: screenSize.height,
+                    sizeMultiplier: settings.cloudSize,
+                    startOffScreen: false,
+                    rng: &rng
+                )
+            }
+        } else {
+            let count = Int.random(in: 3...CloudFactory.maxClouds)
+            clouds = (0..<count).map { _ in
+                CloudFactory.makeCloud(
+                    screenWidth: screenSize.width,
+                    sizeMultiplier: settings.cloudSize,
+                    startOffScreen: false,
+                    rng: &rng
+                )
+            }
         }
     }
 
@@ -952,7 +1017,8 @@ final class WeatherAnimationModel {
     private func advanceClouds(dt: CGFloat) {
         guard !clouds.isEmpty else { return }
         let settings = WeatherSettings.shared
-        guard settings.cloudsEnabled || settings.weatherType == .thunderstorm else { return }
+        let isClear = settings.weatherType == .clear
+        guard settings.cloudsEnabled || settings.weatherType == .thunderstorm || isClear else { return }
 
         for i in clouds.indices {
             clouds[i].x += clouds[i].speed * CGFloat(settings.cloudSpeed) * dt
@@ -962,12 +1028,20 @@ final class WeatherAnimationModel {
         for i in clouds.indices {
             if clouds[i].x - clouds[i].width / 2 > screenSize.width {
                 var rng = SeededRNG(seed: UInt64(CACurrentMediaTime().bitPattern) &+ UInt64(i))
-                clouds[i] = CloudFactory.makeCloud(
-                    screenWidth: screenSize.width,
-                    sizeMultiplier: settings.cloudSize,
-                    startOffScreen: true,
-                    rng: &rng
-                )
+                clouds[i] = isClear
+                    ? CloudFactory.makeFairWeatherCloud(
+                        screenWidth: screenSize.width,
+                        screenHeight: screenSize.height,
+                        sizeMultiplier: settings.cloudSize,
+                        startOffScreen: true,
+                        rng: &rng
+                    )
+                    : CloudFactory.makeCloud(
+                        screenWidth: screenSize.width,
+                        sizeMultiplier: settings.cloudSize,
+                        startOffScreen: true,
+                        rng: &rng
+                    )
             }
         }
     }
@@ -987,6 +1061,8 @@ final class WeatherAnimationModel {
             return FogParticleFactory.makeWisp(startY: startY, screenWidth: screenSize.width, rng: &rng)
         case .aurora:
             return AuroraParticleFactory.makeBand(startY: startY, screenWidth: screenSize.width, rng: &rng)
+        case .clear:
+            return ClearParticleFactory.makeMote(startY: startY, screenWidth: screenSize.width, rng: &rng)
         case .snow:
             return SnowParticleFactory.makeFlake(startY: startY, screenWidth: screenSize.width, rng: &rng)
         }

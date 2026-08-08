@@ -44,15 +44,21 @@ struct WeatherView: View {
 
                 let isDark = colorScheme == .dark
 
-                // Clouds are drawn first (behind particles) so particles appear to fall through them
-                if settings.cloudsEnabled || settings.weatherType == .thunderstorm {
+                // Clouds are drawn first (behind particles) so particles appear to fall
+                // through them. In Clear Skies this also puts the cumulus behind the
+                // light shafts, which is what makes the shafts read as light in the air
+                // rather than as decals pasted over the scene.
+                if settings.cloudsEnabled
+                    || settings.weatherType == .thunderstorm
+                    || settings.weatherType == .clear {
                     CloudRenderer.draw(
                         context: context,
                         size: size,
                         isDark: isDark,
                         clouds: model.clouds,
                         weatherType: settings.weatherType,
-                        cloudOpacity: settings.cloudOpacity
+                        cloudOpacity: settings.cloudOpacity,
+                        sunDirection: model.sunDirection
                     )
                 }
 
@@ -98,6 +104,20 @@ struct WeatherView: View {
                         fogBands: model.fogBands,
                         particleOpacity: pOpacity,
                         tintHue: settings.fogTintHue
+                    )
+                case .clear:
+                    // Reuses the Aurora bird controls — same flock, different sky —
+                    // and the accumulation toggle doubles as the sun-rays switch.
+                    ClearSkyRenderer.draw(
+                        context: context, size: size, isDark: isDark,
+                        sky: model.sky,
+                        time: model.clearTime,
+                        particles: model.particles,
+                        particleOpacity: pOpacity,
+                        raysEnabled: settings.accumulationEnabled,
+                        birdCount: settings.auroraBirdCount,
+                        birdSize: settings.auroraBirdSize,
+                        birdWildness: settings.auroraBirdWildness
                     )
                 case .aurora:
                     AuroraRenderer.draw(

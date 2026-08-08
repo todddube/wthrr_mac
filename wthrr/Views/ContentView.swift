@@ -77,6 +77,7 @@ struct ContentView: View {
                     liveWeatherSection
 
                     Picker(selection: $settings.weatherType) {
+                        Image(systemName: "sun.max.fill").help("Clear Skies").tag(WeatherType.clear)
                         Image(systemName: "snowflake").help("Snow").tag(WeatherType.snow)
                         Image(systemName: "cloud.rain.fill").help("Rain").tag(WeatherType.rain)
                         Image(systemName: "cloud.bolt.rain.fill").help("Thunderstorm").tag(WeatherType.thunderstorm)
@@ -528,6 +529,7 @@ struct PresetPill: View {
         case .rain:         return "cloud.rain"
         case .thunderstorm: return "cloud.bolt.rain"
         case .fog:          return "cloud.fog"
+        case .clear:        return "sun.max"
         case .aiStorm:      return "bolt"
         case .aurora:       return "aqi.medium"
         }

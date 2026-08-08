@@ -215,6 +215,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             iconName = "pause.circle"
         } else {
             switch WeatherSettings.shared.weatherType {
+            case .clear:        iconName = "sun.max.fill"
             case .snow:         iconName = "snowflake"
             case .rain:         iconName = "cloud.rain.fill"
             case .thunderstorm: iconName = "cloud.bolt.rain.fill"
