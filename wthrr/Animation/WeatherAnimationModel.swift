@@ -10,11 +10,19 @@ import QuartzCore
 
 // MARK: - Weather animation model
 
-/// Drives weather particle physics at ~60 fps and manages the per-column accumulation
-/// height map and rain effects. The baseline is always the true screen bottom
-/// (screenSize.height); snow piles upward from there. The Dock sits above our
-/// window level and naturally occludes whatever is behind it.
-@Observable
+/// Drives weather particle physics and manages the per-column accumulation height map
+/// and rain effects. The baseline is always the true screen bottom (screenSize.height);
+/// snow piles upward from there. The Dock sits above our window level and naturally
+/// occludes whatever is behind it.
+///
+/// Deliberately **not** `@Observable`. Redraws are driven by `WeatherView`'s
+/// `TimelineView`, never by observation, so making this type observable would add an
+/// Observation registrar access to every property read and write in the frame loop —
+/// on the order of hundreds of thousands per second at high particle counts — for no
+/// subscribers. `WeatherView` reads these properties from inside a Canvas closure that
+/// is already scheduled by the timeline.
+///
+/// The frame rate at which `advance(settings:)` is called is decided by `RenderBudget`.
 @MainActor
 final class WeatherAnimationModel {
     private(set) var particles: [Particle] = []
@@ -22,6 +30,9 @@ final class WeatherAnimationModel {
     private let wind = WindModel()
 
     private var lastTime: CFTimeInterval = 0
+
+    /// Timeline tick the simulation was last advanced for. See `advance(settings:tick:)`.
+    private var lastTick: Date?
 
     private var builtCount = 0
     private var builtSeed  = 0
@@ -255,20 +266,23 @@ final class WeatherAnimationModel {
 
     /// Advances all particle positions by one frame.
     /// Handles snow accumulation, rain splashes, and puddle growth depending on settings.
-    /// When adaptive quality is active and battery/CPU limits are exceeded, the effective
-    /// fps is capped to reduce GPU load before this function advances physics.
-    /// Called each frame by the TimelineView-driven Canvas.
-    func advance(settings: WeatherSettings) {
+    ///
+    /// Frame pacing is *not* handled here. `RenderBudget` decides the timeline's
+    /// `minimumInterval`, so low-power and battery throttling now reduce actual redraws
+    /// rather than merely skipping physics between full-rate draws. `dt` is always
+    /// measured from the wall clock and clamped, so this function is correct at any rate.
+    ///
+    /// - Parameter tick: The timeline date this frame belongs to. Repeated calls with
+    ///   the same tick are ignored, so physics cannot double-step if SwiftUI evaluates
+    ///   the Canvas closure more than once per frame.
+    func advance(settings: WeatherSettings, tick: Date) {
+        guard tick != lastTick else { return }
+        lastTick = tick
+
         let now = CACurrentMediaTime()
 
         // Paused: keep lastTime current so we don't get a huge dt spike on resume
         if settings.isPaused { lastTime = now; return }
-
-        // Low-power mode OR adaptive quality battery throttle: target ~30 fps
-        let adaptiveBatteryLow = settings.adaptiveQualityEnabled
-            && !AdaptiveQualityMonitor.shared.isCharging
-            && (AdaptiveQualityMonitor.shared.batteryPercent ?? 100) <= settings.batteryThreshold
-        if (settings.lowPowerMode || adaptiveBatteryLow) && lastTime > 0 && (now - lastTime) < 1.0 / 30.0 { return }
 
         let dt: CGFloat = lastTime == 0 ? 1.0 / 60.0 : CGFloat(min(now - lastTime, 1.0 / 20.0))
         lastTime = now
@@ -289,44 +303,56 @@ final class WeatherAnimationModel {
         let accumulating = settings.accumulationEnabled && !accumulationMap.isEmpty
         let maxAccumH    = min(CGFloat(settings.maxAccumulationHeight), screenSize.height * 0.20)
 
-        for i in particles.indices {
-            // Apply fall speed, wind, and wobble to each particle
-            // windAngle rotates the fall vector: 0° = straight down, positive = tilt right.
-            // cos(angle) projects onto the Y axis (downward), sin(angle) onto X (rightward).
-            let angleRad = CGFloat(settings.windAngle) * .pi / 180
-            particles[i].y += particles[i].fallSpeed * speedScale * dt * cos(angleRad)
-            particles[i].x += particles[i].fallSpeed * speedScale * dt * sin(angleRad)
-            // Wind adds a per-particle lateral nudge weighted by windSensitivity
-            particles[i].x += currentWindVelocity * particles[i].windSensitivity * speedScale * dt
-            // Sinusoidal wobble creates the characteristic side-to-side swaying motion
-            particles[i].x += sin(time * particles[i].wobbleFreq + particles[i].wobblePhase)
-                                * particles[i].wobbleAmp * dt
-            // Slowly spin the crystal (snow and AI storm only; 0 for rain)
-            particles[i].rotation += particles[i].rotationSpeed * dt
+        // Hoist everything loop-invariant out of the per-particle body. `windAngle`
+        // in particular was being converted to radians and passed through sin/cos on
+        // every single particle, every frame.
+        // windAngle rotates the fall vector: 0° = straight down, positive = tilt right.
+        // cos(angle) projects onto the Y axis (downward), sin(angle) onto X (rightward).
+        let angleRad     = CGFloat(settings.windAngle) * .pi / 180
+        let fallY        = cos(angleRad)
+        let fallX        = sin(angleRad)
+        let wind         = currentWindVelocity
+        let weatherType  = settings.weatherType
+        let screenW      = screenSize.width
+        let screenH      = screenSize.height
+        let wrapLeft: CGFloat  = -30
+        let wrapRight: CGFloat = screenW + 30
 
-            if isRain {
-                advanceRainParticle(at: i, accumulating: accumulating)
-            } else if settings.weatherType == .aiStorm {
-                advanceAIStormParticle(at: i)
-            } else if settings.weatherType == .fog {
-                if particles[i].y > screenSize.height + 40 {
-                    particles[i].y = -40
-                    particles[i].x = CGFloat.random(in: 0...screenSize.width)
-                }
-            } else if settings.weatherType == .aurora {
-                if particles[i].y > screenSize.height + 40 {
-                    particles[i].y = -40
-                    particles[i].x = CGFloat.random(in: 0...screenSize.width)
-                }
-            } else {
-                advanceSnowParticle(at: i, accumulating: accumulating, maxAccumH: maxAccumH)
-            }
+        // Direct buffer access avoids a class-property lookup and a copy-on-write
+        // uniqueness check on every one of the ~10 subscript operations below.
+        particles.withUnsafeMutableBufferPointer { buf in
+            for i in buf.indices {
+                let step = buf[i].fallSpeed * speedScale * dt
+                buf[i].y += step * fallY
+                buf[i].x += step * fallX
+                // Wind adds a per-particle lateral nudge weighted by windSensitivity
+                buf[i].x += wind * buf[i].windSensitivity * speedScale * dt
+                // Sinusoidal wobble creates the characteristic side-to-side swaying motion
+                buf[i].x += sin(time * buf[i].wobbleFreq + buf[i].wobblePhase)
+                                * buf[i].wobbleAmp * dt
+                // Slowly spin the crystal (snow and AI storm only; 0 for rain)
+                buf[i].rotation += buf[i].rotationSpeed * dt
 
-            // Wrap horizontally when a particle drifts off screen
-            if particles[i].x < -30 {
-                particles[i].x = screenSize.width + 30
-            } else if particles[i].x > screenSize.width + 30 {
-                particles[i].x = -30
+                switch weatherType {
+                case .rain, .thunderstorm:
+                    advanceRainParticle(&buf[i], accumulating: accumulating)
+                case .aiStorm:
+                    advanceAIStormParticle(&buf[i])
+                case .fog, .aurora:
+                    if buf[i].y > screenH + 40 {
+                        buf[i].y = -40
+                        buf[i].x = CGFloat.random(in: 0...screenW)
+                    }
+                case .snow:
+                    advanceSnowParticle(&buf[i], accumulating: accumulating, maxAccumH: maxAccumH)
+                }
+
+                // Wrap horizontally when a particle drifts off screen
+                if buf[i].x < wrapLeft {
+                    buf[i].x = wrapRight
+                } else if buf[i].x > wrapRight {
+                    buf[i].x = wrapLeft
+                }
             }
         }
 
@@ -371,26 +397,26 @@ final class WeatherAnimationModel {
 
     /// Handles a single raindrop hitting the ground: spawns a splash, grows the
     /// nearest puddle, and recycles the drop to the top of the screen.
-    private func advanceRainParticle(at i: Int, accumulating: Bool) {
+    ///
+    /// Takes the particle `inout` rather than by index so the caller can hold a direct
+    /// buffer pointer for the whole frame loop.
+    private func advanceRainParticle(_ p: inout Particle, accumulating: Bool) {
         let groundY = screenSize.height
-        let hitY    = particles[i].y + particles[i].length
-
-        guard hitY >= groundY else { return }
+        guard p.y + p.length >= groundY else { return }
 
         // Spawn a splash at impact point
-        let splash = Splash(
-            x:        particles[i].x,
+        splashes.append(Splash(
+            x:        p.x,
             y:        groundY,
             radius:   0,
             opacity:  Double.random(in: 0.5...0.8),
             age:      0,
             lifetime: CGFloat.random(in: 0.2...0.4)
-        )
-        splashes.append(splash)
+        ))
 
         // Grow nearest puddle and trigger a ripple if puddles mode is enabled
         if accumulating && !puddles.isEmpty {
-            let dropX = particles[i].x
+            let dropX = p.x
             if let idx = puddles.indices.min(by: { abs(puddles[$0].x - dropX) < abs(puddles[$1].x - dropX) }) {
                 let dist = abs(puddles[idx].x - dropX)
                 if dist < puddles[idx].width * 0.65 {
@@ -404,34 +430,34 @@ final class WeatherAnimationModel {
         }
 
         // Recycle drop to top of screen
-        particles[i].y = -(particles[i].length + 2)
-        particles[i].x = CGFloat.random(in: -20...(screenSize.width + 20))
+        p.y = -(p.length + 2)
+        p.x = CGFloat.random(in: -20...(screenSize.width + 20))
     }
 
     // MARK: Snow physics
 
     /// Handles a single snowflake landing: deposits snow into the accumulation map
     /// and recycles the flake to the top of the screen.
-    private func advanceSnowParticle(at i: Int, accumulating: Bool, maxAccumH: CGFloat) {
+    private func advanceSnowParticle(_ p: inout Particle, accumulating: Bool, maxAccumH: CGFloat) {
         if accumulating {
-            let col      = min(max(0, Int(particles[i].x / columnWidth)), accumulationMap.count - 1)
+            let col      = min(max(0, Int(p.x / columnWidth)), accumulationMap.count - 1)
             let landingY = baselineMap[col] - accumulationMap[col]
 
-            if particles[i].y + particles[i].size >= landingY {
-                let deposit = particles[i].size * 0.35
+            if p.y + p.size >= landingY {
+                let deposit = p.size * 0.35
                 for offset in -1...1 {
                     let c = col + offset
                     guard c >= 0 && c < accumulationMap.count else { continue }
                     let amount = offset == 0 ? deposit : deposit * 0.3
                     accumulationMap[c] = min(accumulationMap[c] + amount, maxAccumH)
                 }
-                particles[i].y = -(particles[i].size + 2)
-                particles[i].x = CGFloat.random(in: -20...(screenSize.width + 20))
+                p.y = -(p.size + 2)
+                p.x = CGFloat.random(in: -20...(screenSize.width + 20))
             }
         } else {
-            if particles[i].y > screenSize.height + particles[i].size + 2 {
-                particles[i].y = -(particles[i].size + 2)
-                particles[i].x = CGFloat.random(in: -20...(screenSize.width + 20))
+            if p.y > screenSize.height + p.size + 2 {
+                p.y = -(p.size + 2)
+                p.x = CGFloat.random(in: -20...(screenSize.width + 20))
             }
         }
     }
@@ -476,21 +502,21 @@ final class WeatherAnimationModel {
     // MARK: AI Storm physics
 
     /// Wraps an AI storm particle that has gone off-screen (including upward-movers).
-    private func advanceAIStormParticle(at i: Int) {
+    private func advanceAIStormParticle(_ p: inout Particle) {
         // Wrap vertically for both upward and downward movement
-        if particles[i].y > screenSize.height + 20 {
-            particles[i].y = -20
-            particles[i].x = CGFloat.random(in: -20...(screenSize.width + 20))
-        } else if particles[i].y < -30 {
-            particles[i].y = screenSize.height + 10
-            particles[i].x = CGFloat.random(in: -20...(screenSize.width + 20))
+        if p.y > screenSize.height + 20 {
+            p.y = -20
+            p.x = CGFloat.random(in: -20...(screenSize.width + 20))
+        } else if p.y < -30 {
+            p.y = screenSize.height + 10
+            p.x = CGFloat.random(in: -20...(screenSize.width + 20))
         }
 
         // Occasional glitch teleport — a sudden jump to a nearby position
         glitchFrame &+= 1
         if glitchFrame % 7 == 0 && CGFloat.random(in: 0...1) < 0.02 {
-            particles[i].x += CGFloat.random(in: -60...60)
-            particles[i].y += CGFloat.random(in: -40...40)
+            p.x += CGFloat.random(in: -60...60)
+            p.y += CGFloat.random(in: -40...40)
         }
     }
 

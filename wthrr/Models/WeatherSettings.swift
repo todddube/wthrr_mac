@@ -156,6 +156,16 @@ class WeatherSettings {
         didSet { UserDefaults.standard.set(windAngle, forKey: "windAngle") }
     }
 
+    /// Ceiling on overlay redraws per second. 0 means "match the display refresh rate",
+    /// which on a ProMotion Mac is 120 fps — twice the work for an effect nobody can
+    /// tell apart from 60. Default 60.
+    var maxFrameRate: Int {
+        didSet { UserDefaults.standard.set(maxFrameRate, forKey: "maxFrameRate") }
+    }
+
+    /// Frame-rate ceilings offered in Settings. 0 = display native.
+    static let frameRateOptions = [30, 60, 120, 0]
+
     /// When true, limits animation to ~30 fps to reduce CPU usage.
     var lowPowerMode: Bool {
         didSet { UserDefaults.standard.set(lowPowerMode, forKey: "lowPowerMode") }
@@ -356,6 +366,12 @@ class WeatherSettings {
 
         let savedOpacity = UserDefaults.standard.double(forKey: "particleOpacity")
         particleOpacity = savedOpacity > 0 ? savedOpacity : 1.0
+
+        // A stored 0 is a legitimate value ("display native"), so distinguish
+        // "never set" from "set to 0" rather than treating 0 as missing.
+        maxFrameRate = UserDefaults.standard.object(forKey: "maxFrameRate") != nil
+            ? UserDefaults.standard.integer(forKey: "maxFrameRate")
+            : 60
 
         lowPowerMode = UserDefaults.standard.object(forKey: "lowPowerMode") != nil
             ? UserDefaults.standard.bool(forKey: "lowPowerMode")

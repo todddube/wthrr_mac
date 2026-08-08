@@ -5,6 +5,7 @@
 // GitHub: https://github.com/todddube/wthrr_mac
 // License: MIT — see LICENSE for details
 
+import AppKit
 import Foundation
 import IOKit.ps
 import Darwin
@@ -37,15 +38,64 @@ final class AdaptiveQualityMonitor {
     /// True when the Mac is on AC power (charging or trickle-charged).
     private(set) var isCharging: Bool = true
 
+    /// True when macOS itself is in Low Power Mode. Tracked independently of `start()`
+    /// and `stop()` so wthrr always honours the system setting, even with adaptive
+    /// quality switched off.
+    private(set) var isSystemLowPower: Bool = false
+
+    /// True while the displays are asleep. Overlay rendering suspends entirely in
+    /// this state — nothing is on screen to see.
+    private(set) var screensAreAsleep: Bool = false
+
     /// Whether the polling loop is currently running.
     var isRunning: Bool { pollTask != nil }
 
     private var pollTask: Task<Void, Never>?
 
+    /// Notification tokens for the always-on system-state observers.
+    private var systemObservers: [NSObjectProtocol] = []
+
     /// Per-core tick snapshot from the previous poll, used to compute deltas.
     private var prevTicks: [(user: Double, sys: Double, idle: Double, nice: Double)] = []
 
-    private init() {}
+    private init() {
+        isSystemLowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+        observeSystemState()
+    }
+
+    // MARK: - Always-on system state
+
+    /// Registers observers for system Low Power Mode and display sleep. These are
+    /// independent of `start()`/`stop()` — they cost nothing when idle and both
+    /// signals should be honoured regardless of the adaptive quality setting.
+    private func observeSystemState() {
+        let center = NotificationCenter.default
+        systemObservers.append(center.addObserver(
+            forName: .NSProcessInfoPowerStateDidChange, object: nil, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated {
+                AdaptiveQualityMonitor.shared.isSystemLowPower =
+                    ProcessInfo.processInfo.isLowPowerModeEnabled
+            }
+        })
+
+        let workspace = NSWorkspace.shared.notificationCenter
+        systemObservers.append(workspace.addObserver(
+            forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated {
+                AdaptiveQualityMonitor.shared.screensAreAsleep = true
+                PerformanceMonitor.shared.reset()
+            }
+        })
+        systemObservers.append(workspace.addObserver(
+            forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main
+        ) { _ in
+            MainActor.assumeIsolated {
+                AdaptiveQualityMonitor.shared.screensAreAsleep = false
+            }
+        })
+    }
 
     // MARK: - Lifecycle
 

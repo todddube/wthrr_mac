@@ -853,6 +853,30 @@ private struct BehaviorTab: View {
 
                 Divider()
 
+                // Frame rate ceiling
+                HStack {
+                    Text("Max Frame Rate").font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Picker("", selection: $settings.maxFrameRate) {
+                        ForEach(WeatherSettings.frameRateOptions, id: \.self) { fps in
+                            Text(fps == 0 ? "Display" : "\(fps) fps").tag(fps)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .controlSize(.small)
+                    .frame(width: 110)
+                }
+                Text("Overlays redraw no more often than this. 60 fps looks identical to 120 for weather effects and halves the work on ProMotion displays.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                // Live render cost, measured from wthrr's own frames.
+                PerformanceReadout()
+
+                Divider()
+
                 // Low Power
                 Toggle(isOn: $settings.lowPowerMode) {
                     HStack {
@@ -936,6 +960,42 @@ private struct BehaviorTab: View {
         if battLow            { return "Throttling: battery \(monitor.batteryPercent ?? 0)%" }
         let cpu = monitor.cpuUsage > 0 ? " · CPU \(Int(monitor.cpuUsage * 100))%" : ""
         return "Normal\(cpu)"
+    }
+}
+
+// MARK: - Performance readout
+
+/// Shows what wthrr's own rendering currently costs, sampled by `PerformanceMonitor`.
+///
+/// This is distinct from the Adaptive Quality indicator below it: that one reflects
+/// *system* CPU and battery, while these numbers are wthrr's own frames. Aggregates
+/// refresh about once a second, so this view redraws at 1 Hz — not per frame.
+private struct PerformanceReadout: View {
+    private var monitor: PerformanceMonitor { PerformanceMonitor.shared }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            metric("FPS", monitor.hasData
+                   ? String(format: "%.0f", monitor.effectiveFPS) : "—")
+            metric("Frame p50", monitor.hasData
+                   ? String(format: "%.1f ms", monitor.frameTimeP50Ms) : "—")
+            metric("Frame p99", monitor.hasData
+                   ? String(format: "%.1f ms", monitor.frameTimeP99Ms) : "—")
+            metric("Overlays", monitor.hasData
+                   ? "\(monitor.activeCanvasCount)" : "—")
+            Spacer()
+        }
+        .padding(.top, 2)
+        .help(monitor.hasData
+              ? "Measured from wthrr's own frames. Rendering suspends when the overlay is hidden, so these pause too."
+              : "No frames measured yet — every overlay is currently paused, occluded, or the display is asleep.")
+    }
+
+    private func metric(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(label).font(.caption2).foregroundStyle(.tertiary)
+            Text(value).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+        }
     }
 }
 

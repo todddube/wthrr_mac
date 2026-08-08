@@ -11,8 +11,13 @@ import SwiftUI
 
 /// Full-screen view that renders weather particles (snow, rain, or AI storm) and
 /// secondary effects (drift, splashes, puddles) each frame. Uses a `TimelineView`
-/// to drive display-refresh-synced redraws and delegates rendering to the
-/// appropriate weather-specific renderer based on the active weather type.
+/// to drive redraws and delegates rendering to the appropriate weather-specific
+/// renderer based on the active weather type.
+///
+/// The timeline's pacing comes from `RenderBudget`, which caps the frame rate and
+/// suspends the timeline entirely when the overlay is paused, occluded, or the
+/// displays are asleep. A suspended timeline requests no frames at all, so the
+/// Canvas closure below is never invoked and nothing is rasterised.
 struct WeatherView: View {
     @Environment(WeatherSettings.self) private var settings
     @Environment(ScreenGeometry.self)  private var geometry
@@ -20,15 +25,22 @@ struct WeatherView: View {
     @State private var model = WeatherAnimationModel()
 
     var body: some View {
-        // TimelineView(.animation) requests a redraw every display refresh cycle (~60 fps).
-        // The Canvas closure is called once per frame with the current graphics context and size.
-        TimelineView(.animation) { timeline in
+        let budget = RenderBudget.current(settings: settings, isVisible: geometry.isVisible)
+
+        TimelineView(.animation(minimumInterval: budget.minimumInterval, paused: budget.paused)) { timeline in
             Canvas { context, size in
-                // Configure and advance are driven by the timeline date change,
-                // not inside the Canvas closure, to avoid double-advances if
-                // Canvas evaluates its body more than once per frame.
+                let frame = PerformanceMonitor.shared.beginFrame(canvasID: geometry.canvasID)
+                defer {
+                    PerformanceMonitor.shared.endFrame(frame, particleCount: model.particles.count)
+                }
+
                 model.configure(size: size, settings: settings)
-                model.advance(settings: settings)
+
+                // `tick` makes this a no-op if SwiftUI evaluates the Canvas closure
+                // more than once for a single timeline tick, so physics can't double-step.
+                PerformanceMonitor.shared.measurePhysics {
+                    model.advance(settings: settings, tick: timeline.date)
+                }
 
                 let isDark = colorScheme == .dark
 

@@ -23,7 +23,8 @@ class OverlayWindowController {
     private var geometryByDisplay: [String: ScreenGeometry] = [:]
 
     /// Creates overlay windows for all currently enabled displays and registers
-    /// for screen configuration change notifications so the pool stays in sync.
+    /// for screen configuration and occlusion change notifications so the pool
+    /// stays in sync and hidden overlays stop rendering.
     func showWindows() {
         applySettings()
 
@@ -33,6 +34,27 @@ class OverlayWindowController {
             name: NSApplication.didChangeScreenParametersNotification,
             object: nil
         )
+
+        // Fires whenever any window becomes fully covered or is revealed again.
+        // Registered once for all windows (object: nil) and dispatched by identity.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowOcclusionDidChange(_:)),
+            name: NSWindow.didChangeOcclusionStateNotification,
+            object: nil
+        )
+    }
+
+    /// Propagates a window's occlusion state to the `ScreenGeometry` its `WeatherView`
+    /// observes, which suspends or resumes that overlay's timeline.
+    @objc private func windowOcclusionDidChange(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        guard let id = windowsByDisplay.first(where: { $0.value === window })?.key else { return }
+        let visible = window.occlusionState.contains(.visible)
+        guard geometryByDisplay[id]?.isVisible != visible else { return }
+        geometryByDisplay[id]?.isVisible = visible
+        // Frame-time samples taken before a suspension shouldn't be averaged across the gap.
+        if !visible { PerformanceMonitor.shared.reset() }
     }
 
     /// Reconciles the live set of overlay windows against the current display
@@ -87,6 +109,11 @@ class OverlayWindowController {
 
         let geometry = ScreenGeometry()
         geometry.update(screen: screen)
+        // `isVisible` deliberately starts true rather than being seeded from
+        // `window.occlusionState`: the window has not been ordered in yet, and AppKit
+        // does not report a meaningful state until it has. Defaulting to true means the
+        // worst case if occlusion notifications never arrive is that we lose the saving,
+        // not that the overlay renders nothing.
         geometryByDisplay[screen.displayID] = geometry
 
         let rootView = WeatherView()
