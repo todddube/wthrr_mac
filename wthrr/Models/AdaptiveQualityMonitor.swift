@@ -7,6 +7,7 @@
 
 import AppKit
 import Foundation
+import QuartzCore
 import IOKit.ps
 import Darwin
 
@@ -28,9 +29,20 @@ import Darwin
 final class AdaptiveQualityMonitor {
     static let shared = AdaptiveQualityMonitor()
 
-    /// Latest CPU utilisation across all logical cores, 0.0–1.0.
-    /// Updated every poll interval; 0 until the second poll (delta-based).
+    /// Latest CPU utilisation **by wthrr itself**, expressed as a fraction of one
+    /// core's worth of work divided across all logical cores (0.0–1.0), so it is
+    /// directly comparable to `cpuThreshold`.
+    ///
+    /// This deliberately measures our own process rather than the whole machine.
+    /// The previous implementation sampled `host_processor_info`, so adaptive quality
+    /// fired whenever *anything else* — a build, a browser, a video call — loaded the
+    /// CPU, and never fired when wthrr was itself the expensive process. That is
+    /// backwards from what the feature promises.
     private(set) var cpuUsage: Double = 0
+
+    /// System-wide CPU utilisation, 0.0–1.0. Retained as a secondary signal so wthrr
+    /// can still back off when the machine as a whole is under pressure.
+    private(set) var systemCPUUsage: Double = 0
 
     /// Battery percentage (0–100), or nil on desktop Macs with no battery.
     private(set) var batteryPercent: Int? = nil
@@ -115,6 +127,9 @@ final class AdaptiveQualityMonitor {
         pollTask?.cancel()
         pollTask = nil
         cpuUsage       = 0
+        systemCPUUsage = 0
+        prevProcessCPUSeconds = 0
+        prevProcessSampleTime = 0
         batteryPercent = nil
         isCharging     = true
         prevTicks      = []
@@ -123,25 +138,91 @@ final class AdaptiveQualityMonitor {
     // MARK: - Poll
 
     private func poll() {
-        cpuUsage = measureCPU()
+        cpuUsage       = measureOwnCPU()
+        systemCPUUsage = measureSystemCPU()
         let batt   = readBattery()
         batteryPercent = batt?.percent
         isCharging     = batt?.isCharging ?? true
     }
 
-    // MARK: - CPU measurement
+    // MARK: - Own-process CPU measurement
+
+    /// Total CPU time consumed by this process at the previous poll, in seconds.
+    private var prevProcessCPUSeconds: Double = 0
+
+    /// Wall-clock time of the previous own-CPU sample.
+    private var prevProcessSampleTime: CFTimeInterval = 0
+
+    /// Returns wthrr's own CPU utilisation as a fraction of total machine capacity.
+    ///
+    /// `TASK_BASIC_INFO` reports cumulative CPU time for terminated threads only, so
+    /// this walks the live thread list and adds their running totals — that is the
+    /// only way to get an accurate figure for a process whose threads are long-lived,
+    /// which ours are. The result is normalised by elapsed wall time and core count so
+    /// 1.0 means "wthrr is saturating every core".
+    private func measureOwnCPU() -> Double {
+        var threadList: thread_act_array_t?
+        var threadCount: mach_msg_type_number_t = 0
+
+        guard task_threads(mach_task_self_, &threadList, &threadCount) == KERN_SUCCESS,
+              let threads = threadList else { return cpuUsage }
+
+        defer {
+            for i in 0..<Int(threadCount) {
+                mach_port_deallocate(mach_task_self_, threads[i])
+            }
+            vm_deallocate(mach_task_self_,
+                          vm_address_t(UInt(bitPattern: threads)),
+                          vm_size_t(Int(threadCount) * MemoryLayout<thread_t>.size))
+        }
+
+        var totalSeconds = 0.0
+        for i in 0..<Int(threadCount) {
+            var info = thread_basic_info()
+            // THREAD_BASIC_INFO_COUNT is a C macro and isn't imported into Swift.
+            var count = mach_msg_type_number_t(
+                MemoryLayout<thread_basic_info_data_t>.size / MemoryLayout<natural_t>.size
+            )
+            let kr = withUnsafeMutablePointer(to: &info) { ptr in
+                ptr.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                    thread_info(threads[i], thread_flavor_t(THREAD_BASIC_INFO), $0, &count)
+                }
+            }
+            guard kr == KERN_SUCCESS, info.flags & TH_FLAGS_IDLE == 0 else { continue }
+            totalSeconds += Double(info.user_time.seconds) + Double(info.user_time.microseconds) / 1_000_000
+            totalSeconds += Double(info.system_time.seconds) + Double(info.system_time.microseconds) / 1_000_000
+        }
+
+        let now = CACurrentMediaTime()
+        defer {
+            prevProcessCPUSeconds = totalSeconds
+            prevProcessSampleTime = now
+        }
+
+        // First sample establishes a baseline; there is nothing to diff against yet.
+        guard prevProcessSampleTime > 0 else { return 0 }
+
+        let elapsed = now - prevProcessSampleTime
+        guard elapsed > 0 else { return cpuUsage }
+
+        let cores = Double(max(1, ProcessInfo.processInfo.activeProcessorCount))
+        let used = max(0, totalSeconds - prevProcessCPUSeconds)
+        return min(1.0, used / elapsed / cores)
+    }
+
+    // MARK: - System CPU measurement
 
     /// Returns CPU utilisation across all logical cores as a fraction 0.0–1.0.
     /// Uses the delta between successive `host_processor_info` tick snapshots so
     /// the first call always returns 0 (no previous baseline yet).
-    private func measureCPU() -> Double {
+    private func measureSystemCPU() -> Double {
         var numCPUs:   natural_t               = 0
         var rawInfo:   processor_info_array_t? = nil
         var infoCount: mach_msg_type_number_t  = 0
 
         let kr = host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO,
                                      &numCPUs, &rawInfo, &infoCount)
-        guard kr == KERN_SUCCESS, let info = rawInfo else { return cpuUsage }
+        guard kr == KERN_SUCCESS, let info = rawInfo else { return systemCPUUsage }
 
         defer {
             vm_deallocate(mach_task_self_,
@@ -164,7 +245,7 @@ final class AdaptiveQualityMonitor {
         // First call: store baseline and return the previous cached value (0 on first run).
         guard prevTicks.count == current.count else {
             prevTicks = current
-            return cpuUsage
+            return systemCPUUsage
         }
 
         // Delta across all cores since the last poll.
@@ -182,7 +263,7 @@ final class AdaptiveQualityMonitor {
         }
 
         prevTicks = current
-        return totalAll > 0 ? min(1.0, totalUsed / totalAll) : cpuUsage
+        return totalAll > 0 ? min(1.0, totalUsed / totalAll) : systemCPUUsage
     }
 
     // MARK: - Battery

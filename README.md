@@ -57,6 +57,9 @@ Download the latest `.dmg` from the [Releases](https://github.com/todddube/wthrr
 
 ## Weather Modes
 
+### Clear Skies
+Fair weather as its own scene. The sun tracks an arc across the sky driven by the local clock — low and golden on the left at sunrise, high and blue-white at midday, low on the right at sunset — with volumetric light shafts fanning out, lens-flare ghosts along the axis to screen centre, and drifting pollen motes that brighten and warm as they pass near the light. Large sunlit cumulus drift slowly beneath it, every cloud shaded from the same direction as the sun. After sunset the scene becomes a cratered moon over a field of twinkling stars. Birds cross the sky using the same flock controls as Aurora.
+
 ### Snow
 Procedural snowfall with three crystal shapes (graupel dots, star plates, branching dendrites) assigned by size. Per-flake rotation, blue tint, and wobble. Drift accumulation with adjustable depth and steady-state melt.
 
@@ -82,6 +85,8 @@ Neon glitch particles, scan line distortion, circuit-trace data bolts, corruptio
 ### Live Weather
 Pulls real conditions from [Open-Meteo](https://open-meteo.com) and auto-applies weather type and intensity. Shows your location name and temperature in the header. Manual controls are disabled while active.
 
+WMO weather codes map to the matching scene: clear and partly cloudy (0–3) to **Clear Skies**, fog (45, 48) to **Fog**, drizzle and rain (51–67, 80–82) to **Rain**, snow (71–77, 85–86) to **Snow**, and thunderstorms (95–99) to **Thunderstorm** with lightning.
+
 ### Presets
 9 built-in presets (Blizzard, Light Flurry, Spring Rain, Monsoon, Thunderstorm, Foggy Morning, Aurora Borealis, Glitch Overload, Digital Ghost) plus save/load/delete of custom named presets. Import and export as JSON to share between machines.
 
@@ -102,9 +107,12 @@ Overlays span all connected displays, or pick specific monitors. Windows rebuild
 - **Seasonal auto-switch** — Snow in winter, Rain in spring, Thunderstorm in summer, Fog in autumn
 - **Night dimming** — subtly dims effects between 10 pm–5 am with dusk/dawn transitions
 - **Low Power Mode** — limits animation to ~30 fps
+- **Max Frame Rate** — caps overlay redraws (30 / 60 / 120 / display native); defaults to 60, which looks identical to 120 for weather effects and roughly halves render work on ProMotion displays
+- **Hidden overlays suspend** — an overlay that is fully covered by another window, or on a sleeping display, stops rendering entirely rather than drawing where nobody can see it
+- **Performance readout** — live FPS and frame-time p50/p99 measured from wthrr's own frames, with `os_signpost` intervals (`frame`, `physics`) for Instruments
 
 ### Screenshot Preview
-Right-click the menu bar icon → **Screenshot Preview…** to open a clean 1280×800 window with a solid black background. Switch between all six effects without leaving the window. Use **⌘⇧4** then click to capture frameable screenshots of any effect.
+Right-click the menu bar icon → **Screenshot Preview…** to open a clean 1280×800 window with a solid black background. Switch between all seven effects without leaving the window. Use **⌘⇧4** then click to capture frameable screenshots of any effect.
 
 ---
 
@@ -141,7 +149,9 @@ Select the **wthrr** scheme, choose **My Mac**, and hit **Cmd+R**. The app appea
 wthrr/
 ├── App/            Entry point, AppDelegate, lifecycle, global hotkey
 ├── Models/         WeatherSettings, Particle, ScreenGeometry, WeatherPreset,
-│                   HotkeyBinding, ColorTheme
+│                   HotkeyBinding, ColorTheme, RenderBudget, PerformanceMonitor
+├── Clear/          ClearParticle (SkyState + mote factory), ClearSkyRenderer
+├── Birds/          BirdRenderer — shared flock used by Clear Skies and Aurora
 ├── Snow/           SnowParticle (shapes + factory), SnowRenderer
 ├── Rain/           RainParticle (splash/puddle + factory), RainRenderer
 ├── AIStorm/        AIStormParticle (glitch types + factory), AIStormRenderer

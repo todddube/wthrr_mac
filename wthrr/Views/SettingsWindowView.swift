@@ -934,6 +934,11 @@ private struct BehaviorTab: View {
                         }
                     }
 
+                    Text("CPU Threshold applies to wthrr's own CPU use, not the whole machine.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+
                     HStack(spacing: 6) {
                         Circle()
                             .fill(AdaptiveQualityMonitor.shared.isRunning

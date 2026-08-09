@@ -28,7 +28,7 @@ struct RenderBudget: Equatable {
     /// Why rendering is suspended, for diagnostics. Empty when running.
     let suspensionReason: String?
 
-    /// Computes the budget for one overlay canvas.
+    /// Computes the budget for one overlay canvas from live app state.
     ///
     /// - Parameters:
     ///   - settings: Current user settings.
@@ -36,12 +36,42 @@ struct RenderBudget: Equatable {
     @MainActor
     static func current(settings: WeatherSettings, isVisible: Bool) -> RenderBudget {
         let system = AdaptiveQualityMonitor.shared
+        return resolve(
+            isPaused: settings.isPaused,
+            screensAsleep: system.screensAreAsleep,
+            isVisible: isVisible,
+            maxFrameRate: settings.maxFrameRate,
+            appLowPowerMode: settings.lowPowerMode,
+            systemLowPowerMode: system.isSystemLowPower,
+            adaptiveQualityEnabled: settings.adaptiveQualityEnabled,
+            isCharging: system.isCharging,
+            batteryPercent: system.batteryPercent,
+            batteryThreshold: settings.batteryThreshold
+        )
+    }
 
+    /// The actual decision, expressed over plain values.
+    ///
+    /// Kept free of `WeatherSettings` and `AdaptiveQualityMonitor` so it can be tested
+    /// directly — those are both `UserDefaults`-backed singletons, and a test that had
+    /// to mutate them would be writing to the real app's saved settings.
+    static func resolve(
+        isPaused: Bool,
+        screensAsleep: Bool,
+        isVisible: Bool,
+        maxFrameRate: Int,
+        appLowPowerMode: Bool,
+        systemLowPowerMode: Bool,
+        adaptiveQualityEnabled: Bool,
+        isCharging: Bool,
+        batteryPercent: Int?,
+        batteryThreshold: Int
+    ) -> RenderBudget {
         // Suspension — checked in the order the user would explain it.
-        if settings.isPaused {
+        if isPaused {
             return RenderBudget(paused: true, minimumInterval: nil, suspensionReason: "Paused")
         }
-        if system.screensAreAsleep {
+        if screensAsleep {
             return RenderBudget(paused: true, minimumInterval: nil, suspensionReason: "Display asleep")
         }
         if !isVisible {
@@ -51,13 +81,13 @@ struct RenderBudget: Equatable {
         }
 
         // Frame-rate ceiling.
-        var fps = settings.maxFrameRate
+        var fps = maxFrameRate
 
-        let batteryLow = settings.adaptiveQualityEnabled
-            && !system.isCharging
-            && (system.batteryPercent ?? 100) <= settings.batteryThreshold
+        let batteryLow = adaptiveQualityEnabled
+            && !isCharging
+            && (batteryPercent ?? 100) <= batteryThreshold
 
-        if settings.lowPowerMode || system.isSystemLowPower || batteryLow {
+        if appLowPowerMode || systemLowPowerMode || batteryLow {
             // 0 means "display native"; any explicit rate is clamped down to 30.
             fps = fps == 0 ? 30 : min(fps, 30)
         }

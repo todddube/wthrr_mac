@@ -26,6 +26,11 @@ wthrr/
 ├── App/            wthrrApp.swift — entry point, AppDelegate, lifecycle, global hotkey
 ├── Models/         WeatherSettings, Particle, ScreenGeometry, WeatherPreset,
 │                   HotkeyBinding, ColorTheme — shared data & domain types
+│                   RenderBudget — resolves frame-rate cap + suspension per canvas
+│                   PerformanceMonitor — frame-time percentiles + os_signpost intervals
+├── Clear/          ClearParticle (SkyState + mote factory), ClearSkyRenderer
+│                   (sun/moon arc, light shafts, lens flare, stars, motes)
+├── Birds/          BirdRenderer — shared flock used by Clear Skies and Aurora
 ├── Snow/           SnowParticle (shapes + factory), SnowRenderer (drawing)
 ├── Rain/           RainParticle (splash/puddle + factory), RainRenderer (drawing)
 ├── AIStorm/        AIStormParticle (glitch types + factory), AIStormRenderer (neon effects)

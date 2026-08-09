@@ -392,8 +392,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             ctx.duration = 0.3
             window.animator().alphaValue = 0
         }, completionHandler: {
-            window.orderOut(nil)
-            window.close()
+            // AppKit always invokes this on the main thread, but the completion handler
+            // is typed as nonisolated, so Swift 6 needs that stated explicitly.
+            MainActor.assumeIsolated {
+                window.orderOut(nil)
+                window.close()
+            }
         })
     }
 

@@ -57,6 +57,9 @@ final class WeatherAnimationModel {
     /// Persistent puddles that grow during rain + puddles mode.
     private(set) var puddles: [Puddle] = []
 
+    /// Maps a horizontal bucket index to the nearest puddle. See `rebuildPuddleLookup`.
+    private var puddleLookup: [Int] = []
+
     // MARK: Lightning
 
     /// The currently active lightning bolt, if any. Nil when no strike is in progress.
@@ -153,6 +156,9 @@ final class WeatherAnimationModel {
     /// Ground level per column in Canvas coordinates (Y increases downward).
     private(set) var baselineMap: [CGFloat] = []
 
+    /// Reusable destination buffer for `smoothAccumulation`, swapped rather than copied.
+    private var smoothScratch: [CGFloat] = []
+
     private var lastScreenSize: CGSize = .zero
 
     // MARK: Configuration
@@ -168,8 +174,23 @@ final class WeatherAnimationModel {
         configureClouds(settings: settings)
 
         // Determine whether adaptive quality is currently throttling particle count.
+        //
+        // Three independent triggers, in decreasing order of directness:
+        //   1. We are missing our own frame budget — the signal that actually
+        //      corresponds to visible stutter, measured from wthrr's own frames.
+        //   2. wthrr's own CPU share is over the user's threshold.
+        //   3. Battery is low and we are not on AC.
         let monitor = AdaptiveQualityMonitor.shared
+        let perf = PerformanceMonitor.shared
+
+        // Budget is one frame interval at the configured cap; allow 1.5× before
+        // reacting so ordinary jitter doesn't oscillate the particle count.
+        let targetFPS = settings.maxFrameRate > 0 ? Double(settings.maxFrameRate) : 60
+        let frameBudgetMs = 1000.0 / targetFPS * 1.5
+        let missingBudget = perf.hasData && perf.frameTimeP99Ms > frameBudgetMs
+
         let throttled = settings.adaptiveQualityEnabled && (
+            missingBudget ||
             monitor.cpuUsage >= settings.cpuThreshold ||
             (!monitor.isCharging && (monitor.batteryPercent ?? 100) <= settings.batteryThreshold)
         )
@@ -254,13 +275,32 @@ final class WeatherAnimationModel {
     }
 
     /// Box-blur pass to smooth the snow surface. Called every 30 frames.
+    ///
+    /// Uses a persistent scratch buffer rather than copying the height map each pass —
+    /// on a 6K display that map is ~1500 elements and this ran every half second.
     private func smoothAccumulation() {
-        guard accumulationMap.count > 2 else { return }
-        var smoothed = accumulationMap
-        for i in 1..<(accumulationMap.count - 1) {
-            smoothed[i] = (accumulationMap[i - 1] + accumulationMap[i] * 2 + accumulationMap[i + 1]) / 4
+        let n = accumulationMap.count
+        guard n > 2 else { return }
+
+        if smoothScratch.count != n {
+            smoothScratch = accumulationMap
+        } else {
+            smoothScratch.withUnsafeMutableBufferPointer { dst in
+                accumulationMap.withUnsafeBufferPointer { src in
+                    dst[0] = src[0]
+                    dst[n - 1] = src[n - 1]
+                }
+            }
         }
-        accumulationMap = smoothed
+
+        accumulationMap.withUnsafeBufferPointer { src in
+            smoothScratch.withUnsafeMutableBufferPointer { dst in
+                for i in 1..<(n - 1) {
+                    dst[i] = (src[i - 1] + src[i] * 2 + src[i + 1]) / 4
+                }
+            }
+        }
+        swap(&accumulationMap, &smoothScratch)
     }
 
     // MARK: Rain effect helpers
@@ -269,6 +309,7 @@ final class WeatherAnimationModel {
     func clearRainEffects() {
         splashes.removeAll()
         puddles.removeAll()
+        puddleLookup.removeAll()
     }
 
     /// Populates the puddles array with 8-12 randomly placed puddles across the screen width.
@@ -285,6 +326,33 @@ final class WeatherAnimationModel {
                 rippleRadius:  0,
                 rippleOpacity: 0
             )
+        }
+        rebuildPuddleLookup()
+    }
+
+    /// Width in points of one nearest-puddle lookup bucket.
+    private static let puddleBucketWidth: CGFloat = 24
+
+    /// Precomputes the nearest puddle for each horizontal bucket across the screen.
+    ///
+    /// Puddles never move once placed, so the nearest-puddle answer is fixed. Finding
+    /// it with a linear scan per landing raindrop meant an O(puddles) search hundreds
+    /// of times a second during heavy rain; this turns it into one array index.
+    private func rebuildPuddleLookup() {
+        guard !puddles.isEmpty, screenSize.width > 0 else {
+            puddleLookup = []
+            return
+        }
+        let buckets = max(1, Int(ceil(screenSize.width / Self.puddleBucketWidth)))
+        puddleLookup = (0..<buckets).map { b in
+            let x = (CGFloat(b) + 0.5) * Self.puddleBucketWidth
+            var best = 0
+            var bestDist = CGFloat.greatestFiniteMagnitude
+            for (i, p) in puddles.enumerated() {
+                let d = abs(p.x - x)
+                if d < bestDist { bestDist = d; best = i }
+            }
+            return best
         }
     }
 
@@ -463,16 +531,15 @@ final class WeatherAnimationModel {
         ))
 
         // Grow nearest puddle and trigger a ripple if puddles mode is enabled
-        if accumulating && !puddles.isEmpty {
-            let dropX = p.x
-            if let idx = puddles.indices.min(by: { abs(puddles[$0].x - dropX) < abs(puddles[$1].x - dropX) }) {
-                let dist = abs(puddles[idx].x - dropX)
-                if dist < puddles[idx].width * 0.65 {
-                    puddles[idx].height = min(puddles[idx].height + 0.025, 18.0)
-                    if puddles[idx].rippleOpacity < 0.1 {
-                        puddles[idx].rippleRadius  = 2
-                        puddles[idx].rippleOpacity = 0.75
-                    }
+        if accumulating && !puddleLookup.isEmpty {
+            let bucket = min(puddleLookup.count - 1,
+                             max(0, Int(p.x / Self.puddleBucketWidth)))
+            let idx = puddleLookup[bucket]
+            if abs(puddles[idx].x - p.x) < puddles[idx].width * 0.65 {
+                puddles[idx].height = min(puddles[idx].height + 0.025, 18.0)
+                if puddles[idx].rippleOpacity < 0.1 {
+                    puddles[idx].rippleRadius  = 2
+                    puddles[idx].rippleOpacity = 0.75
                 }
             }
         }
@@ -514,15 +581,23 @@ final class WeatherAnimationModel {
 
     /// Ages all active splashes, expanding their radius and fading opacity.
     /// Removes splashes that have exceeded their lifetime.
+    ///
+    /// Ages in place, then compacts in a single `removeAll(where:)` pass. The previous
+    /// reversed loop called `remove(at:)` per expired splash, each of which shifts the
+    /// tail of the array — quadratic behaviour exactly when it hurts most, since heavy
+    /// rain spawns and expires hundreds of splashes a second.
     private func ageSplashes(dt: CGFloat) {
-        for i in splashes.indices.reversed() {
-            splashes[i].age    += dt
-            splashes[i].radius  = splashes[i].age / splashes[i].lifetime * 18
-            splashes[i].opacity = Double(1 - splashes[i].age / splashes[i].lifetime) * 0.85
-            if splashes[i].age >= splashes[i].lifetime {
-                splashes.remove(at: i)
+        guard !splashes.isEmpty else { return }
+
+        splashes.withUnsafeMutableBufferPointer { buf in
+            for i in buf.indices {
+                buf[i].age += dt
+                let progress = buf[i].age / buf[i].lifetime
+                buf[i].radius  = progress * 18
+                buf[i].opacity = Double(1 - progress) * 0.85
             }
         }
+        splashes.removeAll { $0.age >= $0.lifetime }
     }
 
     /// Expands and fades active puddle ripple rings.
@@ -739,7 +814,10 @@ final class WeatherAnimationModel {
             alienShips[i].x += alienShips[i].vx * dt
             alienShips[i].y += alienShips[i].vy * dt
 
-            // Update trail (keep last 12 positions)
+            // Update trail (keep last 12 positions, newest first).
+            // Left as a front-insert: at 12 entries across 2–4 ships this is a few
+            // dozen element moves per frame, far below the noise floor, and a ring
+            // buffer here would leak an index into `AlienShip` and its renderer.
             alienShips[i].trail.insert((alienShips[i].x, alienShips[i].y), at: 0)
             if alienShips[i].trail.count > 12 {
                 alienShips[i].trail.removeLast()
