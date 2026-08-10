@@ -57,13 +57,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
 
-        // Enforce single instance.
-        let bundleID = Bundle.main.bundleIdentifier ?? ""
-        let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
-            .filter { $0 != NSRunningApplication.current }
-        if !others.isEmpty {
-            NSApplication.shared.terminate(nil)
-            return
+        // Enforce single instance — but never when hosting a test bundle. Unit tests run
+        // inside this app, so if a copy of wthrr happens to be running the host would
+        // terminate itself before the test runner could connect, and the whole suite
+        // fails with an unrelated-looking bootstrap error.
+        if !Self.isRunningTests {
+            let bundleID = Bundle.main.bundleIdentifier ?? ""
+            let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+                .filter { $0 != NSRunningApplication.current }
+            if !others.isEmpty {
+                NSApplication.shared.terminate(nil)
+                return
+            }
         }
 
         setupStatusItem()
@@ -478,6 +483,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Key used with `objc_setAssociatedObject` to retain the SIGTERM dispatch source.
     private static var sigTermKey = 0
+
+    /// True when this process was launched to host a test bundle rather than as the
+    /// user-facing app. Both keys are injected by the test runner.
+    static var isRunningTests: Bool {
+        let env = ProcessInfo.processInfo.environment
+        return env["XCTestConfigurationFilePath"] != nil || env["XCTestBundlePath"] != nil
+    }
 }
 
 // MARK: - Keyable borderless window

@@ -31,8 +31,9 @@ struct WhatsNewView: View {
         [
             // New in this build
             ("sun.max.fill",          "Clear Skies — a whole scene for fair weather: the sun tracks an arc across the sky by time of day, with big sunlit cumulus, volumetric light shafts, lens flare, and drifting motes"),
-            ("moon.stars.fill",       "Night sky — after sunset Clear Skies switches to a craterd moon and a field of twinkling stars"),
+            ("moon.stars.fill",       "Night sky — after sunset Clear Skies switches to a cratered moon and a field of twinkling stars"),
             ("checkmark.seal.fill",   "Live Weather accuracy — clear and partly cloudy conditions now show Clear Skies instead of rain, fog codes finally show Fog, and thunderstorms show the Thunderstorm scene"),
+            ("bolt.badge.clock",      "Twice as fast — heavy snow went from 103% to 53% CPU on an M4; fog dropped 16% on top of that"),
             ("gauge.with.dots.needle.33percent", "Frame rate cap — overlays are limited to 60 fps by default (configurable in Behavior), roughly halving render work on ProMotion displays"),
             ("eye.slash.fill",        "Hidden overlays stop rendering — when a display is fully covered or asleep, that overlay suspends entirely instead of drawing where nobody can see it"),
             ("speedometer",           "Performance readout — live FPS and frame-time percentiles for wthrr's own rendering, in Behavior settings"),

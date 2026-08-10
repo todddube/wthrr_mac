@@ -110,6 +110,11 @@ Overlays span all connected displays, or pick specific monitors. Windows rebuild
 - **Max Frame Rate** — caps overlay redraws (30 / 60 / 120 / display native); defaults to 60, which looks identical to 120 for weather effects and roughly halves render work on ProMotion displays
 - **Hidden overlays suspend** — an overlay that is fully covered by another window, or on a sleeping display, stops rendering entirely rather than drawing where nobody can see it
 - **Performance readout** — live FPS and frame-time p50/p99 measured from wthrr's own frames, with `os_signpost` intervals (`frame`, `physics`) for Instruments
+- **Adaptive Quality** — reduces particle count when wthrr misses its own frame budget, when wthrr's own CPU share exceeds the threshold, or when the battery is low off mains
+
+Measured on an Apple M4 with a 6K display, heavy snow (400 flakes, accumulation and clouds on), both builds at the display refresh rate: **103% CPU before, 53% after** — a little over 2× faster. Capping to 30 fps takes it to 40%. Fog with 400 wisps went from 24% to 20% once its gradients stopped being rebuilt per particle per frame.
+
+A `Canvas`-symbol renderer for snow crystals (rasterise each once, blit per flake) was also built and measured, and came out 3–5% *slower* than drawing the batched vector geometry directly — resampling a rotated, scaled bitmap per flake costs more than the strokes do. It was removed rather than kept.
 
 ### Screenshot Preview
 Right-click the menu bar icon → **Screenshot Preview…** to open a clean 1280×800 window with a solid black background. Switch between all seven effects without leaving the window. Use **⌘⇧4** then click to capture frameable screenshots of any effect.

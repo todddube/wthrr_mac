@@ -20,6 +20,17 @@
 
 ---
 
+## Step 1b — Run the Tests
+
+```bash
+xcodebuild -project wthrr.xcodeproj -scheme wthrr -destination 'platform=macOS' test
+```
+
+The suite covers the pure logic — sun position, render budget, seeded RNG, factories,
+crystal geometry, weather-type persistence. It runs in well under a second.
+
+---
+
 ## Step 2 — Build the DMG
 
 ```bash
@@ -72,6 +83,8 @@ To publish as a draft first:
 
 | Version | Date       | Notes |
 |---------|------------|-------|
+| v1.1    | 2026-08-09 | [Release notes](release-notes/1.1.md) — Clear Skies weather mode, Live Weather WMO mapping fixes, ~2× CPU reduction, frame-rate cap, occlusion suspension, Swift 6, unit test target |
+| v1.0    | 2026-07-02 | [Release notes](release-notes/1.0.md) — open-source release under MIT |
 | v1.0b2  | 2026-03-22 | [Release notes](release-notes/1.0b.md) — full 1.0b feature set: Aurora, Thunderstorm, Fog, AI Storm, Live Weather, presets, color theming, multi-display, Launch at Login |
 
 ---
