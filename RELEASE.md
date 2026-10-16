@@ -83,6 +83,7 @@ To publish as a draft first:
 
 | Version | Date       | Notes |
 |---------|------------|-------|
+| v1.2    | 2026-10-16 | [Release notes](release-notes/1.2.md) — Retro 8-bit mode for every weather type, pixel size picker, `scripts/install.sh` + app-builder agent |
 | v1.1    | 2026-08-09 | [Release notes](release-notes/1.1.md) — Clear Skies weather mode, Live Weather WMO mapping fixes, ~2× CPU reduction, frame-rate cap, occlusion suspension, Swift 6, unit test target |
 | v1.0    | 2026-07-02 | [Release notes](release-notes/1.0.md) — open-source release under MIT |
 | v1.0b2  | 2026-03-22 | [Release notes](release-notes/1.0b.md) — full 1.0b feature set: Aurora, Thunderstorm, Fog, AI Storm, Live Weather, presets, color theming, multi-display, Launch at Login |
