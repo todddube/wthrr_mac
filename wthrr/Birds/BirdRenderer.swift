@@ -17,38 +17,36 @@ import SwiftUI
 /// Clear Skies (dark silhouettes against daylight).
 enum BirdRenderer {
 
-    /// Renders a flock of flapping birds.
+    /// One bird's position and wing state for a single frame.
+    struct Pose {
+        /// Body centre.
+        let x: CGFloat
+        let y: CGFloat
+        /// Half the wingspan, in points.
+        let halfSpan: CGFloat
+        /// Wing lift, -1 (fully down) … 1 (fully up).
+        let lift: CGFloat
+    }
+
+    /// Computes where every bird in the flock is at `time`.
     ///
-    /// - Parameters:
-    ///   - context:   Canvas graphics context to draw into.
-    ///   - size:      Full canvas size in points.
-    ///   - time:      Elapsed animation time in seconds; drives drift and wing flap.
-    ///   - count:     Number of birds to render (0 = off).
-    ///   - sizeScale: Global size multiplier (0.5 tiny → 3.0 huge). 1.0 ≈ 28 pt wingspan.
-    ///   - wildness:  Variation factor (0 = uniform flock, 1 = chaotic scatter).
-    ///   - color:     Silhouette colour.
-    ///   - opacity:   Final stroke opacity.
-    ///   - bandTop:   Top of the vertical band birds occupy, as a fraction of height.
-    ///   - bandDepth: Height of that band, as a fraction of screen height.
-    static func draw(
-        context: GraphicsContext,
+    /// Shared by the smooth renderer below and the retro pixel renderer, so both
+    /// styles fly the exact same flight paths.
+    static func poses(
         size: CGSize,
         time: CGFloat,
         count: Int,
         sizeScale: Double,
         wildness: Double,
-        color: Color,
-        opacity: Double,
         bandTop: Double = 0.03,
         bandDepth: Double = 0.15
-    ) {
-        guard count > 0, opacity > 0.005 else { return }
+    ) -> [Pose] {
+        guard count > 0 else { return [] }
 
         // Base half-wingspan in points — "size 1.0" gives ~14 pt half = 28 pt full wingspan
         let baseHalf: CGFloat = 14.0
-
-        var ctx = context
-        ctx.opacity = opacity
+        var poses: [Pose] = []
+        poses.reserveCapacity(count)
 
         for i in 0..<count {
             // Deterministic per-bird seeds using multiples of irrational constants
@@ -86,8 +84,48 @@ enum BirdRenderer {
             let x = (startX + speed * size.width * time)
                 .truncatingRemainder(dividingBy: size.width + halfSpan * 2) - halfSpan
 
+            poses.append(Pose(x: x, y: y, halfSpan: halfSpan,
+                              lift: sin(time * flapSpeed + phase)))
+        }
+        return poses
+    }
+
+    /// Renders a flock of flapping birds.
+    ///
+    /// - Parameters:
+    ///   - context:   Canvas graphics context to draw into.
+    ///   - size:      Full canvas size in points.
+    ///   - time:      Elapsed animation time in seconds; drives drift and wing flap.
+    ///   - count:     Number of birds to render (0 = off).
+    ///   - sizeScale: Global size multiplier (0.5 tiny → 3.0 huge). 1.0 ≈ 28 pt wingspan.
+    ///   - wildness:  Variation factor (0 = uniform flock, 1 = chaotic scatter).
+    ///   - color:     Silhouette colour.
+    ///   - opacity:   Final stroke opacity.
+    ///   - bandTop:   Top of the vertical band birds occupy, as a fraction of height.
+    ///   - bandDepth: Height of that band, as a fraction of screen height.
+    static func draw(
+        context: GraphicsContext,
+        size: CGSize,
+        time: CGFloat,
+        count: Int,
+        sizeScale: Double,
+        wildness: Double,
+        color: Color,
+        opacity: Double,
+        bandTop: Double = 0.03,
+        bandDepth: Double = 0.15
+    ) {
+        guard count > 0, opacity > 0.005 else { return }
+
+        var ctx = context
+        ctx.opacity = opacity
+
+        for bird in poses(size: size, time: time, count: count, sizeScale: sizeScale,
+                          wildness: wildness, bandTop: bandTop, bandDepth: bandDepth) {
+            let x = bird.x, y = bird.y, halfSpan = bird.halfSpan
+
             // Wing lift: sine flap
-            let wh = halfSpan * 0.55 * sin(time * flapSpeed + phase)
+            let wh = halfSpan * 0.55 * bird.lift
 
             // Two quad-curve strokes forming a "M" wing silhouette
             var path = Path()

@@ -44,6 +44,16 @@ struct WeatherView: View {
 
                 let isDark = colorScheme == .dark
 
+                // Retro mode swaps the whole drawing layer for 8-bit pixel art; the
+                // simulation above is shared, so toggling it never resets the scene.
+                if settings.retroModeEnabled {
+                    RetroRenderer.draw(
+                        context: context, size: size, isDark: isDark,
+                        model: model, settings: settings, now: timeline.date
+                    )
+                    return
+                }
+
                 // Clouds are drawn first (behind particles) so particles appear to fall
                 // through them. In Clear Skies this also puts the cumulus behind the
                 // light shafts, which is what makes the shafts read as light in the air

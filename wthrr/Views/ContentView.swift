@@ -91,6 +91,8 @@ struct ContentView: View {
                     .disabled(settings.liveWeatherEnabled)
 
                     intensityQuickTaps
+
+                    retroToggle
                 }
                 .padding(.horizontal, 20)
 
@@ -271,6 +273,31 @@ struct ContentView: View {
                     .font(.caption2).foregroundStyle(.tertiary)
             }
         }
+    }
+
+    // MARK: - Retro toggle
+
+    /// One-tap switch between the smooth renderers and 8-bit pixel art.
+    /// Pixel size lives in Settings → Appearance.
+    private var retroToggle: some View {
+        @Bindable var settings = settings
+        return Toggle(isOn: $settings.retroModeEnabled) {
+            HStack(spacing: 6) {
+                Image(systemName: "gamecontroller.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("Retro 8-bit")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(settings.retroModeEnabled ? "On" : "Off")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .toggleStyle(.switch)
+        .controlSize(.small)
+        .help("Draw every weather effect as 8-bit pixel art")
     }
 
     // MARK: - Display selection

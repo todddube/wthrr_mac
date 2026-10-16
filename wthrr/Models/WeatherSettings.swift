@@ -253,6 +253,19 @@ class WeatherSettings {
         didSet { UserDefaults.standard.set(fogTintHue, forKey: "fogTintHue") }
     }
 
+    // MARK: Retro mode
+
+    /// When true, every weather type is drawn as 8-bit pixel art by `RetroRenderer`
+    /// instead of the smooth renderers. Simulation is unchanged — only drawing differs.
+    var retroModeEnabled: Bool {
+        didSet { UserDefaults.standard.set(retroModeEnabled, forKey: "retroModeEnabled") }
+    }
+
+    /// Edge length of one retro pixel, in points. One of `RetroPalette.pixelSizeOptions`.
+    var retroPixelSize: Int {
+        didSet { UserDefaults.standard.set(retroPixelSize, forKey: "retroPixelSize") }
+    }
+
     // MARK: Seasonal / Time-of-Day
 
     /// When true, auto-switches weather type based on the calendar month.
@@ -446,6 +459,10 @@ class WeatherSettings {
             ? UserDefaults.standard.integer(forKey: "aiStormPalette") : 0
         fogTintHue = UserDefaults.standard.object(forKey: "fogTintHue") != nil
             ? UserDefaults.standard.double(forKey: "fogTintHue") : -1
+
+        retroModeEnabled = UserDefaults.standard.bool(forKey: "retroModeEnabled")
+        let savedPixelSize = UserDefaults.standard.integer(forKey: "retroPixelSize")
+        retroPixelSize = RetroPalette.pixelSizeOptions.contains(savedPixelSize) ? savedPixelSize : 4
 
         seasonalEnabled = UserDefaults.standard.object(forKey: "seasonalEnabled") != nil
             ? UserDefaults.standard.bool(forKey: "seasonalEnabled")

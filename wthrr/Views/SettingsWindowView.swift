@@ -88,7 +88,10 @@ struct SettingsWindowView: View {
             // ── Content area ─────────────────────────────────
             Group {
                 switch selectedTab {
-                case .appearance:  AppearanceTab()
+                case .appearance:
+                    // Appearance grew a Style section; scroll rather than clip
+                    // in the fixed-size window.
+                    ScrollView(.vertical, showsIndicators: false) { AppearanceTab() }
                 case .environment: EnvironmentTab()
                 case .presets:     PresetsTab()
                 case .behavior:    BehaviorTab()
@@ -233,6 +236,42 @@ private struct AppearanceTab: View {
     var body: some View {
         @Bindable var settings = settings
         VStack(alignment: .leading, spacing: 14) {
+
+            SettingsTabHeader("Style", icon: "gamecontroller")
+
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle(isOn: $settings.retroModeEnabled) {
+                    HStack {
+                        Text("Retro 8-bit").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Text(settings.retroModeEnabled ? "On" : "Off")
+                            .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .controlSize(.small)
+
+                if settings.retroModeEnabled {
+                    HStack {
+                        Text("Pixel Size").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Picker("", selection: $settings.retroPixelSize) {
+                            ForEach(RetroPalette.pixelSizeOptions, id: \.self) { size in
+                                Text(RetroPalette.pixelSizeLabel(size)).tag(size)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .frame(width: 260)
+                    }
+                }
+                Text("Draws every weather type as chunky pixel art with a classic console palette.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
 
             SettingsTabHeader("Particles", icon: "circle.dotted")
 

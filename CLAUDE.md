@@ -15,7 +15,11 @@ Use the Xcode MCP tools to build and validate:
 - **Run snippets**: `ExecuteSnippet` to try logic in the context of an existing file
 - **Tests**: `RunAllTests` / `RunSomeTests` MCP tools (Testing framework for unit tests, XCUIAutomation for UI tests)
 
-There is no command-line build script — all builds go through Xcode.
+For a Release build installed into `/Applications`, run `./scripts/install.sh` (or delegate to the
+`app-builder` agent in `.claude/agents/`). It runs the unit tests, builds, signs, quits the running
+copy, replaces the bundle and relaunches. `scripts/build-dmg.sh` / `scripts/release.sh` package releases.
+If `xcode-select` points at the Command Line Tools, prefix raw `xcodebuild` calls with
+`DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer` (the install script does this itself).
 
 ## Architecture
 
@@ -37,6 +41,10 @@ wthrr/
 ├── Fog/            FogParticle (bands + factory), FogRenderer (gradient bands + wisps)
 ├── Aurora/         AuroraParticle (factory), AuroraRenderer (rippling vertical bands)
 ├── Clouds/         Cloud (factory), CloudRenderer (shared across rain/thunderstorm)
+├── Retro/          8-bit style: PixelPainter (grid-snapped batched cells, Bresenham lines,
+│                   PixelSprite), RetroPalette + RetroSprites, RetroRenderer (dispatch,
+│                   cached cloud rasterisation, birds), RetroPrecipitationRenderer,
+│                   RetroSkyRenderer (clear/aurora/fog), RetroAIStormRenderer (invaders)
 ├── Animation/      WeatherAnimationModel — display-synced physics engine
 ├── Views/          WeatherView (TimelineView + Canvas), ContentView (menu bar popover),
 │                   SettingsWindowView (tabbed settings window), SplashView,
@@ -55,12 +63,13 @@ Compact 350px popover shown on left-click. Contains only the controls users touc
 - Live Weather toggle (enables Open-Meteo auto-mode)
 - Icons-only segmented weather type picker (disabled in live weather mode)
 - Intensity quick-taps (Light / Medium / Heavy) with "Custom" label when manually adjusted
+- Retro 8-bit switch (pixel size is in Settings → Appearance → Style)
 - Display selection (All / Choose with per-screen toggles)
 - Footer: "Settings" button (opens SettingsWindowView) and "Quit"
 
 ### Settings window — `SettingsWindowView`
 Dedicated 520×530 tabbed settings window (System Preferences style icon toolbar). Four tabs:
-- **Appearance** — Particles (amount, speed, opacity, melt rate, AI density) + per-weather-type colour controls
+- **Appearance** (scrolls) — Style (Retro 8-bit, pixel size) + Particles (amount, speed, opacity, melt rate, AI density) + per-weather-type colour controls
 - **Environment** — Wind (strength, direction, fall angle) + Atmosphere (clouds, accumulation/drift, lightning)
 - **Presets** — Save/load/delete named presets, import/export JSON, built-in preset pills
 - **Behavior** — Launch at Login, Seasonal auto-switch, Night Dimming, Low Power Mode, About/links (Onboarding, What's New)
@@ -98,6 +107,18 @@ Manages one borderless `NSWindow` per active display. Windows sit just below nor
 - `AIStormParticleFactory` creates neon glitch particles with erratic movement.
 - `AIStormRenderer` draws glitch particles, scan lines, data bolts, corruption patches, alien ships, and screen fractures.
 
+### Retro 8-bit mode — `Retro/`
+- `WeatherSettings.retroModeEnabled` / `retroPixelSize` (one of `RetroPalette.pixelSizeOptions`).
+- `WeatherView` still runs `configure` + `advance` every frame, then hands the whole frame to
+  `RetroRenderer.draw` instead of the smooth renderers. Retro is presentation-only: never add
+  simulation state for it; read what `WeatherAnimationModel` already exposes.
+- Draw through `PixelPainter`: register inks back-to-front, paint grid cells, `flush` once. One
+  fill per ink keeps a frame to a handful of draw calls. Quantise fades with `PixelPainter.stepped`.
+- Colours come only from `RetroPalette` (user hues snap via `RetroPalette.nearest`); AI Storm uses
+  `NeonPalette` so the palette picker still applies.
+- When adding a weather type, add a retro branch in `RetroRenderer.draw` too.
+- `BirdRenderer.poses(...)` is the single source of flock motion for both styles.
+
 ### Live Weather — `LiveWeatherService`
 - Fetches real conditions from Open-Meteo using device location.
 - Auto-applies weather type and intensity; shows location name + temperature in the header.
@@ -106,7 +127,7 @@ Manages one borderless `NSWindow` per active display. Windows sit just below nor
 ### Key data flow
 ```
 WeatherSettings.shared
-    ├── ContentView (menu bar popover) — core controls: type, intensity, displays
+    ├── ContentView (menu bar popover) — core controls: type, intensity, retro toggle, displays
     ├── SettingsWindowView (settings window) — advanced: appearance, env, presets, behavior
     └── OverlayWindowController
             └── per-display NSWindow
@@ -116,7 +137,8 @@ WeatherSettings.shared
                             ├── FogRenderer + FogParticleFactory
                             ├── AuroraRenderer + AuroraParticleFactory
                             ├── AIStormRenderer + AIStormParticleFactory
-                            └── CloudRenderer + CloudFactory  (shared)
+                            ├── CloudRenderer + CloudFactory  (shared)
+                            └── RetroRenderer  (replaces all of the above when retro mode is on)
 ```
 
 ## Versioning

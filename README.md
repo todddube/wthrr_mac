@@ -82,6 +82,20 @@ Neon glitch particles, scan line distortion, circuit-trace data bolts, corruptio
 
 ## Features
 
+### Retro 8-bit Mode
+Flip **Retro 8-bit** in the menu bar popover (or Settings → Appearance → Style) and every weather type redraws as chunky pixel art with a fixed console palette. The simulation underneath is unchanged — the same particles, clouds, bolts and timers are painted onto a coarse grid — so you can toggle it at any moment without resetting the scene, and Live Weather, presets and every slider keep working.
+
+| Scene | In 8-bit |
+|-------|----------|
+| Clear Skies | Pixel sun with stepped, rotating dashed rays (orange at golden hour); cratered moon and twinkling four-point stars at night; blinking motes |
+| Snow | Three flake sprites matching the dot / star / dendrite crystals; stepped drift with a white cap |
+| Rain / Thunderstorm | Stair-stepped streaks that tilt with the wind, hopping splash droplets, tapered puddles, a blocky lightning bolt and notched screen flash |
+| Fog | Broken, drifting scanlines that thin toward each bank's edges, plus three-row puffs |
+| Aurora | Two-cell-wide curtain stripes with a magenta fringe and a dithered hem, over a starfield |
+| AI Storm | Two-frame space invaders in place of alien ships, pixel glitch glyphs, crawling corruption noise and right-angle data bolts — still using your chosen neon palette |
+
+Clouds are rasterised once per cloud into three-tone blocks (sunlit top, body, shadowed underside) and cached, and each layer is drawn with one fill per colour, so retro mode costs about the same as the smooth renderers. **Pixel Size** (Fine 3 pt / Classic 4 pt / Chunky 6 pt / Huge 8 pt) sets how coarse the grid is.
+
 ### Live Weather
 Pulls real conditions from [Open-Meteo](https://open-meteo.com) and auto-applies weather type and intensity. Shows your location name and temperature in the header. Manual controls are disabled while active.
 
@@ -123,11 +137,11 @@ Right-click the menu bar icon → **Screenshot Preview…** to open a clean 1280
 
 ## Settings
 
-A compact **menu bar popover** gives you everyday controls — weather type picker, intensity quick-taps, live weather toggle, display selection, and pause. The full **Settings window** (System Preferences-style icon toolbar) has a persistent **weather type picker** at the top so you can switch modes without leaving the window — controls update instantly to show options relevant to that type. Four tabs:
+A compact **menu bar popover** gives you everyday controls — weather type picker, intensity quick-taps, Retro 8-bit toggle, live weather toggle, display selection, and pause. The full **Settings window** (System Preferences-style icon toolbar) has a persistent **weather type picker** at the top so you can switch modes without leaving the window — controls update instantly to show options relevant to that type. Four tabs:
 
 | Tab | Controls |
 |-----|----------|
-| **Appearance** | Particle amount, speed, opacity; per-weather colour controls; snow melt rate; AI Storm density; aurora bird count, size, and wildness |
+| **Appearance** | Retro 8-bit style and pixel size; particle amount, speed, opacity; per-weather colour controls; snow melt rate; AI Storm density; aurora bird count, size, and wildness |
 | **Environment** | Wind strength/direction/angle; cloud size, speed, opacity; drift accumulation depth; lightning frequency |
 | **Presets** | Built-in + user presets; save, delete, import/export JSON |
 | **Behavior** | Launch at Login, Seasonal auto-switch, Night Dimming, Low Power Mode; Onboarding and What's New |
@@ -146,6 +160,15 @@ open wthrr.xcodeproj
 
 Select the **wthrr** scheme, choose **My Mac**, and hit **Cmd+R**. The app appears as a weather icon in your menu bar.
 
+To build a Release copy and install it straight into `/Applications` from the command line:
+
+```bash
+./scripts/install.sh              # tests → Release build → sign → replace /Applications/wthrr.app → relaunch
+./scripts/install.sh --skip-tests # faster, skips the unit tests
+```
+
+The script quits the running copy before swapping the bundle and finds Xcode on its own even if `xcode-select` points at the Command Line Tools. In Claude Code, the project's **app-builder** agent (`.claude/agents/app-builder.md`) runs the same script and summarises any test or compile failures.
+
 ---
 
 ## Architecture
@@ -163,6 +186,9 @@ wthrr/
 ├── Fog/            FogParticle (bands + factory), FogRenderer
 ├── Aurora/         AuroraParticle (factory), AuroraRenderer
 ├── Clouds/         Cloud (factory), CloudRenderer
+├── Retro/          PixelPainter (grid-snapped batch drawing + sprites), RetroPalette
+│                   + RetroSprites, RetroRenderer (dispatch, clouds, birds) and
+│                   per-scene 8-bit renderers for precipitation, sky, and AI Storm
 ├── Animation/      WeatherAnimationModel — display-synced physics engine
 ├── Views/          WeatherView, ContentView, SettingsWindowView, SplashView,
 │                   OnboardingView, WhatsNewView, WeatherPreviewView

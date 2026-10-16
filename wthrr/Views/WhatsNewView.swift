@@ -30,6 +30,8 @@ struct WhatsNewView: View {
     private var entries: [(icon: String, text: String)] {
         [
             // New in this build
+            ("gamecontroller.fill",   "Retro 8-bit mode — flip one switch and every weather type redraws as chunky pixel art: sprite snowflakes, stair-step rain, a pixel sun and moon, dithered aurora curtains, and space invaders in the AI Storm"),
+            ("square.grid.3x3.fill",  "Pixel Size — choose Fine, Classic, Chunky, or Huge pixels in Settings → Appearance → Style"),
             ("sun.max.fill",          "Clear Skies — a whole scene for fair weather: the sun tracks an arc across the sky by time of day, with big sunlit cumulus, volumetric light shafts, lens flare, and drifting motes"),
             ("moon.stars.fill",       "Night sky — after sunset Clear Skies switches to a cratered moon and a field of twinkling stars"),
             ("checkmark.seal.fill",   "Live Weather accuracy — clear and partly cloudy conditions now show Clear Skies instead of rain, fog codes finally show Fog, and thunderstorms show the Thunderstorm scene"),

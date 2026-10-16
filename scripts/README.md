@@ -6,6 +6,23 @@ Build, package, and release scripts for wthrr. Run all scripts from the **repo r
 
 ## Scripts
 
+### `install.sh` — Build and install into /Applications
+
+Runs the unit tests, builds Release, signs (Developer ID if present, otherwise ad-hoc), quits the running copy, replaces `/Applications/wthrr.app`, and relaunches it.
+
+```bash
+./scripts/install.sh               # full run
+./scripts/install.sh --skip-tests  # skip unit tests
+./scripts/install.sh --no-launch   # install without relaunching
+./scripts/install.sh --dest ~/Applications
+```
+
+Logs land in `build/logs/` (`test.log`, `build.log`, `sign.log`). Exit codes: `0` ok, `1` no Xcode / bad flag, `2` tests failed, `3` build failed, `4` install failed. If `xcode-select` points at the Command Line Tools, the script uses the first `/Applications/Xcode*.app` automatically.
+
+The Claude Code **app-builder** agent (`.claude/agents/app-builder.md`) wraps this script and reports failures as `file:line — message`.
+
+---
+
 ### `build-dmg.sh` — Build the app and package a DMG installer
 
 Compiles wthrr in Release configuration, generates the DMG background, then packages a styled `.dmg` using `create-dmg`.
